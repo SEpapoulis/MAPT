@@ -28,6 +28,8 @@ columns: pac, start, stop ,path ,name, taxid
 
 import os
 from . import ftp
+from .sql.sql_core import sqldb
+from . import parser
 
 class silva:
     def __init__(self,location=str(),dataset='ref', subunit='small'):
@@ -38,11 +40,46 @@ class silva:
             if not os.path.exists(self.location):
                 os.makedirs(self.location)
         
+        self.version_file = os.path.join(self.location,'version')
+        if not os.path.exists(self.version_file):     
+            self.version = self._find_release()
+        else:
+            f = open(self.version_file,'r')
+            self.version = f.readline()
+            f.close()
+
+        fasta_file,taxmap_file,tax_file = self._generate_filenames(dataset,subunit)
+
+        self.fasta_file=os.path.join(self.location,fasta_file)
+        self.taxmap_file=os.path.join(self.location,taxmap_file)
+        self.tax_file=os.path.join(self.location,tax_file)
+
+        #lets check if these files exsist
+        host = 'ftp.arb-silva.de/current/Exports/'
+        host_tax = host+'taxonomy/'
+        if not os.path.exists(self.fasta_file):
+            self._fetch_file(host+fasta_file)
+        if not os.path.exists(self.taxmap_file):
+            self._fetch_file(host_tax+taxmap_file)
+        if not os.path.exists(self.tax_file):
+            self._fetch_file(host_tax+tax_file)
+
+
+        #we need to complie a database if there is not one already
+        self.db_file = os.path.join(self.location,'sql.db')
+        if not os.path.exists(self.db_file):
+            #create new database and add tables
+            self.db = silva_db(self.db_file)
+            self.db.add_fasta(self.fasta_file)
+            self.db.add_taxmap(self.taxmap_file)
+            self.db.add_tax(self.tax_file)
+            
+        else:
+            self.db = silva_db(self.db_file)
+
+    def _generate_filenames(self,dataset,subunit):
         # % is replaced with either parc for all sequences or ref for high quality sequences
         # * is wildcard for silva release number
-        ftp = 'ftp.arb-silva.de/current/Exports/'
-        ftp_tax = ftp+'taxonomy/'
-                       
         if subunit not in ('small','large'):
             raise ValueError("Invalid subunit, must be either small (16S,18S), or large (23S,28S)")
         
@@ -68,25 +105,13 @@ class silva:
             fasta_file=fasta_file.replace('SSU','LSU')
             taxmap_file=taxmap_file.replace('ssu','lsu')
             tax_file=tax_file.replace('ssu','lsu')
-
+        
         self.release = self._find_release()
         fasta_file=fasta_file.replace('*',self.release)
         taxmap_file=taxmap_file.replace('*',self.release)
         tax_file=tax_file.replace('*',self.release)
-        self.fasta_file=os.path.join(self.location,fasta_file)
-        self.taxmap_file=os.path.join(self.location,taxmap_file)
-        self.tax_file=os.path.join(self.location,tax_file)
 
-        #lets check if these files exsist
-        if not os.path.exists(self.fasta_file):
-            self._fetch_file(ftp+fasta_file)
-        if not os.path.exists(self.taxmap_file):
-            self._fetch_file(ftp_tax+taxmap_file)
-        if not os.path.exists(self.tax_file):
-            self._fetch_file(ftp_tax+tax_file)
-    
-
-
+        return(fasta_file,taxmap_file,tax_file)
 
     def _find_release(self):
         #finding the current release
@@ -94,10 +119,86 @@ class silva:
         file_list = DE.listdir('current/Exports/')
         for f in file_list:
             if '_SSURef_tax_silva.fasta.gz' in f:
-                return(f.split('_')[1])
+                version = f.split('_')[1]
+                f = open(self.version_file,'w')
+                f.write(version+'\n')
+                f.close()
+                return(version)
 
     def _fetch_file(self,target_file):
         DE = ftp.Download_Engine('ftp.arb-silva.de',destination = self.location)
         DE.add_target(target_file)
         DE.download()
+
     
+    
+
+
+class silva_db():
+    def __init__(self,dbfile):
+        self.db = sqldb(dbfile)
+        self.tables=['seqs','taxmap','tax']
+        self.seqs_columns = [('accession', 'TEXT'),('start', 'INTEGER'),
+                                ('stop', 'INTEGER'),('path', 'TEXT'),
+                                ('seq','TEXT')]
+        self.taxmap_columns = [('primaryAccession', 'TEXT'), 
+                                ('start', 'INTEGER'),
+                                ('stop', 'INTEGER'), 
+                                ('path', 'TEXT'),
+                                ('organism_name', 'TEXT'), 
+                                ('taxid','INTEGER')]
+        self.tax_columns = [('path', 'TEXT'), ('taxid', 'INTEGER'), 
+                                ('rank','TEXT'), ('remark', 'TEXT'), 
+                                ('release','INTEGER')]
+    def _col_names(self,table_columns):
+        return([el[0] for el in table_columns])
+
+    #this funciton will add our fasta data into the sql database
+    #700000 sequences at a time (as to not overflow RAM)
+    def add_fasta(self,fasta_file,write_size=700000):
+        self.db.drop_table('seqs')
+        self.db.create_table('seqs',columns=self.seqs_columns,primary_key=['accession','start','stop'])
+        seqs_col=self._col_names(self.seqs_columns)
+        print('Adding sequences to database....', end='\r')
+        i = 1
+        to_db=[]
+        for header,sequence in parser.gzip_fasta(fasta_file):
+            dat = header[1:].split(' ') #remove '>' and split by ' '
+            path = ' '.join(dat[1:]) #rebuild path
+            dat=dat[0].split('.')
+            dat.extend([path,sequence.replace('U','T')])
+            to_db.append(dat)
+            if i % write_size == 0:
+                self.db.insert_rows('seqs',seqs_col,to_db)
+                to_db = []
+            i+=1
+        #adding remaining sequences
+        if i % write_size != 0:
+            self.db.insert_rows('seqs',seqs_col,to_db)
+        print('Adding sequences to database....  [DONE]')
+
+
+    def add_taxmap(self,taxmap_file):
+        self.db.drop_table('taxmap')
+        self.db.create_table('taxmap',columns=self.taxmap_columns,
+                            primary_key=['primaryAccession','start','stop'])
+        taxmap_cols=self._col_names(self.taxmap_columns)
+        to_db=[]
+        for line in parser.gzip_table(taxmap_file):
+            to_db.append(line)
+        self.db.insert_rows('taxmap',taxmap_cols,to_db)
+    
+    def add_tax(self,tax_file):
+        self.db.drop_table('tax')
+        self.db.create_table('tax',columns=self.tax_columns,primary_key=['path'])
+        tax_cols=self._col_names(self.tax_columns)
+        to_db=[]
+        f = open(tax_file,'r')
+        for line in f:
+            dat = line.strip().split('\t')
+            if len(dat) == 3:
+                dat.extend(['',''])
+            to_db.append(dat)
+        f.close()
+        self.db.insert_rows('tax',tax_cols,to_db)
+
