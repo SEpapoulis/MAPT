@@ -48,12 +48,12 @@ class silva:
             self.version = f.readline()
             f.close()
 
-        fasta_file,taxmap_file,tax_file = self._generate_filenames(dataset,subunit)
+        fasta_file,taxmap_file,tax_file,embl_file = self._generate_filenames(dataset,subunit)
 
-        self.fasta_file=os.path.join(self.location,fasta_file)
-        self.taxmap_file=os.path.join(self.location,taxmap_file)
-        self.tax_file=os.path.join(self.location,tax_file)
-
+        self.fasta_file = os.path.join(self.location,fasta_file)
+        self.taxmap_file = os.path.join(self.location,taxmap_file)
+        self.tax_file = os.path.join(self.location,tax_file)
+        self.embl_file = os.path.join(self.location,embl_file)
         #lets check if these files exsist
         host = 'ftp.arb-silva.de/current/Exports/'
         host_tax = host+'taxonomy/'
@@ -63,8 +63,8 @@ class silva:
             self._fetch_file(host_tax+taxmap_file)
         if not os.path.exists(self.tax_file):
             self._fetch_file(host_tax+tax_file)
-
-
+        if not os.path.exists(self.embl_file):
+            self._fetch_file(host_tax+embl_file)
         #we need to complie a database if there is not one already
         self.db_file = os.path.join(self.location,'sql.db')
         if not os.path.exists(self.db_file):
@@ -73,31 +73,31 @@ class silva:
             self.db.add_fasta(self.fasta_file)
             self.db.add_taxmap(self.taxmap_file)
             self.db.add_tax(self.tax_file)
-            
+            self.db.add_embl(self.embl_file)
         else:
             self.db = silva_db(self.db_file)
 
     def _generate_filenames(self,dataset,subunit):
-        # % is replaced with either parc for all sequences or ref for high quality sequences
         # * is wildcard for silva release number
         if subunit not in ('small','large'):
             raise ValueError("Invalid subunit, must be either small (16S,18S), or large (23S,28S)")
-        
+        elif subunit == 'large' and dataset == 'nr':
+            raise ValueError("There is not a silva non-redundant dataset for the large subunit,\nplease specify ref or parc")
         if dataset == 'ref': 
-            fasta_file = 'SILVA_*_SSU%_tax_silva.fasta.gz'.replace('%','Ref')
-            taxmap_file = 'taxmap_slv_ssu_%_*.txt.gz'.replace('%','ref')
+            fasta_file = 'SILVA_*_SSURef_tax_silva.fasta.gz'
+            taxmap_file = 'taxmap_slv_ssu_ref_*.txt.gz'
             tax_file = 'tax_slv_ssu_*.txt'       
-
+            embl_file = 'taxmap_embl_ssu_ref_*.txt.gz'
         elif dataset == 'nr':
             fasta_file = 'SILVA_*_SSURef_Nr99_tax_silva.fasta.gz'
             taxmap_file = 'taxmap_slv_ssu_ref_nr_*.txt.gz'
             tax_file = 'tax_slv_ssu_*.txt'
-        
+            embl_file = 'taxmap_embl_ssu_ref_nr99_*.txt.gz'
         elif dataset == 'parc':
-            fasta_file = 'SILVA_*_SSU%_tax_silva.fasta.gz'.replace('%','Parc')
-            taxmap_file = 'taxmap_slv_ssu_%_*.txt.gz'.replace('%','parc')
-            tax_file = 'tax_slv_ssu_*.txt'  
-        
+            fasta_file = 'SILVA_*_SSUParc_tax_silva.fasta.gz'
+            taxmap_file = 'taxmap_slv_ssu_parc_*.txt.gz'
+            tax_file = 'tax_slv_ssu_*.txt'
+            embl_file = 'taxmap_embl_ssu_parc_*.txt.gz'  
         else:
             raise ValueError("Invalid dataset, choose one of the following: ref, nr, parc")             
         
@@ -105,13 +105,14 @@ class silva:
             fasta_file=fasta_file.replace('SSU','LSU')
             taxmap_file=taxmap_file.replace('ssu','lsu')
             tax_file=tax_file.replace('ssu','lsu')
+            embl_file=embl_file.replace('ssu','lsu')
         
         self.release = self._find_release()
         fasta_file=fasta_file.replace('*',self.release)
         taxmap_file=taxmap_file.replace('*',self.release)
         tax_file=tax_file.replace('*',self.release)
-
-        return(fasta_file,taxmap_file,tax_file)
+        embl_file=embl_file.replace('*',self.release)
+        return(fasta_file,taxmap_file,tax_file,embl_file)
 
     def _find_release(self):
         #finding the current release
@@ -137,7 +138,7 @@ class silva:
 class silva_db():
     def __init__(self,dbfile):
         self.db = sqldb(dbfile)
-        self.tables=['seqs','taxmap','tax']
+        self.tables=['seqs','taxmap','tax','embl']
         self.seqs_columns = [('accession', 'TEXT'),('start', 'INTEGER'),
                                 ('stop', 'INTEGER'),('path', 'TEXT'),
                                 ('seq','TEXT')]
@@ -147,6 +148,13 @@ class silva_db():
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
                                 ('taxid','INTEGER')]
+        self.embl_columns = [('primaryAccession', 'TEXT'), 
+                                ('start', 'INTEGER'),
+                                ('stop', 'INTEGER'), 
+                                ('path', 'TEXT'),
+                                ('organism_name', 'TEXT'), 
+                                ('ncbi_taxid','INTEGER')]
+        #remark can be
         self.tax_columns = [('path', 'TEXT'), ('taxid', 'INTEGER'), 
                                 ('rank','TEXT'), ('remark', 'TEXT'), 
                                 ('release','INTEGER')]
@@ -175,6 +183,7 @@ class silva_db():
         #adding remaining sequences
         if i % write_size != 0:
             self.db.insert_rows('seqs',seqs_col,to_db)
+        
         print('Adding sequences to database....  [DONE]')
 
 
@@ -187,10 +196,11 @@ class silva_db():
         for line in parser.gzip_table(taxmap_file):
             to_db.append(line)
         self.db.insert_rows('taxmap',taxmap_cols,to_db)
+        
     
     def add_tax(self,tax_file):
         self.db.drop_table('tax')
-        self.db.create_table('tax',columns=self.tax_columns,primary_key=['path'])
+        self.db.create_table('tax',columns=self.tax_columns,primary_key=['taxid'])
         tax_cols=self._col_names(self.tax_columns)
         to_db=[]
         f = open(tax_file,'r')
@@ -201,4 +211,15 @@ class silva_db():
             to_db.append(dat)
         f.close()
         self.db.insert_rows('tax',tax_cols,to_db)
-
+        
+    def add_embl(self,embl_file):
+        self.db.drop_table('embl')
+        self.db.create_table('embl',columns=self.embl_columns,
+                            primary_key=['primaryAccession','start','stop'])
+        embl_cols=self._col_names(self.embl_columns)
+        to_db=[]
+        for line in parser.gzip_table(embl_file):
+            to_db.append(line)
+        self.db.insert_rows('embl',embl_cols,to_db)
+        
+    
