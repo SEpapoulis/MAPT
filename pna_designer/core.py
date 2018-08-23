@@ -132,25 +132,20 @@ class silva:
         DE.download()
 
     
-    
 
 
 class silva_db():
     def __init__(self,dbfile):
         self.db = sqldb(dbfile)
         self.tables=['seqs','taxmap','tax','embl']
-        self.seqs_columns = [('accession', 'TEXT'),('start', 'INTEGER'),
-                                ('stop', 'INTEGER'),('path', 'TEXT'),
+        self.seqs_columns = [('accession', 'TEXT'),
+                                ('path', 'TEXT'),
                                 ('seq','TEXT')]
-        self.taxmap_columns = [('primaryAccession', 'TEXT'), 
-                                ('start', 'INTEGER'),
-                                ('stop', 'INTEGER'), 
+        self.taxmap_columns = [('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
                                 ('taxid','INTEGER')]
-        self.embl_columns = [('primaryAccession', 'TEXT'), 
-                                ('start', 'INTEGER'),
-                                ('stop', 'INTEGER'), 
+        self.embl_columns = [('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
                                 ('ncbi_taxid','INTEGER')]
@@ -165,7 +160,7 @@ class silva_db():
     #700000 sequences at a time (as to not overflow RAM)
     def add_fasta(self,fasta_file,write_size=700000):
         self.db.drop_table('seqs')
-        self.db.create_table('seqs',columns=self.seqs_columns,primary_key=['accession','start','stop'])
+        self.db.create_table('seqs',columns=self.seqs_columns,primary_key=['accession'])
         seqs_col=self._col_names(self.seqs_columns)
         print('Adding sequences to database....', end='\r')
         i = 1
@@ -173,8 +168,7 @@ class silva_db():
         for header,sequence in parser.gzip_fasta(fasta_file):
             dat = header[1:].split(' ') #remove '>' and split by ' '
             path = ' '.join(dat[1:]) #rebuild path
-            dat=dat[0].split('.')
-            dat.extend([path,sequence.replace('U','T')])
+            dat=[dat[0],path,sequence.replace('U','T')]
             to_db.append(dat)
             if i % write_size == 0:
                 self.db.insert_rows('seqs',seqs_col,to_db)
@@ -190,11 +184,12 @@ class silva_db():
     def add_taxmap(self,taxmap_file):
         self.db.drop_table('taxmap')
         self.db.create_table('taxmap',columns=self.taxmap_columns,
-                            primary_key=['primaryAccession','start','stop'])
+                            primary_key=['accession'])
         taxmap_cols=self._col_names(self.taxmap_columns)
         to_db=[]
         for line in parser.gzip_table(taxmap_file):
-            to_db.append(line)
+            accession = '.'.join(line[0:3])
+            to_db.append([accession]+line[3:])
         self.db.insert_rows('taxmap',taxmap_cols,to_db)
         
     
@@ -215,11 +210,12 @@ class silva_db():
     def add_embl(self,embl_file):
         self.db.drop_table('embl')
         self.db.create_table('embl',columns=self.embl_columns,
-                            primary_key=['primaryAccession','start','stop'])
+                            primary_key=['accession'])
         embl_cols=self._col_names(self.embl_columns)
         to_db=[]
         for line in parser.gzip_table(embl_file):
-            to_db.append(line)
+            accession = '.'.join(line[0:3])
+            to_db.append([accession]+line[3:])
         self.db.insert_rows('embl',embl_cols,to_db)
         
     

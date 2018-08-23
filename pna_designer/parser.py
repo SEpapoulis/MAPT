@@ -1,6 +1,7 @@
 import os
 import gzip
 
+
 amb_baseset={'R':set(['A','G']),
             'Y':set(['C','T']),
             'S':set(['G','C']),
@@ -61,4 +62,71 @@ def gzip_fasta(fasta_file):
         #for the last sequence
         if header:
             yield(header,seq)
+
+
+def split_newick(s):
+    counter = 0
+    nodedat = tuple()
+    descendants = []
+    taxid = str()
+    for i,char in enumerate(s):
+        if char == '(':
+            if counter == 0:
+                start = i+1
+            counter +=1
+        elif char ==')':
+            counter-=1
+            if counter == 0:
+                stop=i
+                nodedat = (start,stop)
+        elif counter < 1 and char.isdigit():
+            taxid = taxid+char
+        elif counter < 1 and char ==',':
+            if taxid:
+                taxid=int(taxid)
+            else:
+                taxid=None
+            if nodedat:
+                descendants.append((s[nodedat[0]:nodedat[1]],taxid))
+            else:
+                descendants.append((None,taxid))
+            taxid = str()
+            nodedat = tuple()
+    #add before exit
+    if taxid:
+        taxid=int(taxid)
+    else:
+        taxid=None
+    if nodedat:
+        descendants.append((s[nodedat[0]:nodedat[1]],taxid))
+    else:
+        descendants.append((None,taxid))
+    return(descendants)
+
+            
+
+
+class Node:
+    def __init__(self, id):
+        self.id = id
+        self.name = str()
+        self.parent = int()
+        self.children = list()
+
+    def get_id(self):
+        return(self.id)
+
+    def set_name(self,name):
+        self.name = name
+
+    def get_children(self):
+        return(self.children)
+
+    def add_child(self,child):
+        self.children.append(child)
+    
+    def get_parent(self):
+        return(self.parent)
+    def set_parent(self,parent):
+        self.parent = parent
     
