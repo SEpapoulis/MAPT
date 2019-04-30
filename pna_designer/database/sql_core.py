@@ -56,12 +56,18 @@ class sqldb():
             tm=table_name,c=','.join(column_names),q=qm),rows)
         self.conn.commit()
 
-    def get_columns(self,table_name,column_names):
-        col = ','.join(column_names)
+    def get_columns(self,table_name,columns='*'):
+        if type(columns) == type(list()):
+            col = ", ".join(columns)
+        else:
+            col = columns
+        
         self.c.execute('SELECT {c} FROM {t} '.format(c=col, t=table_name))
         return(self.c.fetchall())
     
 
+    #get values from specified columns. all columns are 
+    #returned if nothing is passed
     def get_rows_bycolvalue(self,table_name,valuecolumn,values,columns=['*']):
         if type(values) == type(list()):
             values = [str(el) for el in values]

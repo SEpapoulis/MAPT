@@ -64,6 +64,7 @@ def gzip_fasta(fasta_file):
             yield(header,seq)
 
 
+#returns a list of tuples, where each tuple is (decendants,taxid)
 def split_newick(s):
     counter = 0
     nodedat = tuple()
@@ -102,31 +103,3 @@ def split_newick(s):
     else:
         descendants.append((None,taxid))
     return(descendants)
-
-            
-
-
-class Node:
-    def __init__(self, id):
-        self.id = id
-        self.name = str()
-        self.parent = int()
-        self.children = list()
-
-    def get_id(self):
-        return(self.id)
-
-    def set_name(self,name):
-        self.name = name
-
-    def get_children(self):
-        return(self.children)
-
-    def add_child(self,child):
-        self.children.append(child)
-    
-    def get_parent(self):
-        return(self.parent)
-    def set_parent(self,parent):
-        self.parent = parent
-    
