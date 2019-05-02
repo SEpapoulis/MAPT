@@ -30,6 +30,7 @@ import os
 from . import ftp
 from .database.db import silva_db
 from .database import parser
+from collections import defaultdict
 
 #TODO
 #API for DNA to block and lookup funcitons for DNA    
@@ -81,6 +82,7 @@ class silva:
 
 
         #we need to complie a database if there is not one already
+        #TODO: add except EOFError to downloads to retry failed downloads
         self.db_file = os.path.join(self.location,'sql.db')
         if not os.path.exists(self.db_file):
             #create new database and add tables
@@ -152,5 +154,87 @@ class silva:
         DE.download()
 
     
+class PNA:
 
+    def __init__(self,target_sequence=str,sequences=list):
 
+        self.target= target_sequence.upper()
+
+        #coordiantes for unique kmers that align
+        self.target_match_unique = [0]*len(self.target)
+
+        #coordiantes for all kmers that align, where kmers that are found
+        #more often in seqlist will be weighted more
+        self.target_match = [0]*len(self.target)
+
+        #dictoinary mapping to defaultdicts of kmer counts
+        #note, if kdict[k][kmer] == 0, that means this kmer is unique
+        #to the target sequence!
+        self.kdict={}
+
+        #seqlist is a list of sequences that you DO NOT want to block
+        #thus, you want the area of target that shares the least number
+        #of kmers with seqlist
+        self.seqlist = [seqs.upper() for seqs in sequences]
+
+    def get_kmers(self,k,seqlist):
+        kmers=[]
+        for seq in seqlist:
+            seq=seq.lower()
+            for i in range(k,len(seq)):
+                kmers.append(seq[i-k:i])
+        return(set(kmers))
+
+    def add_kmers(self,k):
+        kmers = defaultdict(int)
+        for seq in self.seqlist:
+            for i in range(k,len(seq)):
+                kmer=seq[i-k:i]
+                kmers[kmer]+=1
+        self.kdict[k] = kmers
+                
+    def add_kmerrng(self,start,end):
+        print("Gathering kmer range {}-{}".format(str(start),str(end)))
+        for k in range(start,end+1):
+            print("\tGathering {}-mers".format(str(k)),end='\r')
+            self.add_kmers(k)
+        print("\t Gathering Complete!")
+
+    def map_kmers(self):
+        for k in self.kdict:
+            for i in range(k,len(self.target)+1):
+                #seq_kmer is the number of kmers in seqlist
+                seq_kmer = self.kdict[k][self.target[i-k:i]]
+                if seq_kmer:
+                    for align in list(range(i-k,i+1)):
+                        self.target_match_unique[align]+=1
+                        self.target_match[align]+=seq_kmer
+
+    def write_results(self,write_file=os.path.join(os.getcwd(),'KmerCoordiantes.csv')):
+        with open(write_file,'w') as o:
+            o.write('Nuclotide,index,unique match, absolute match')
+            for i in range(0,len(self.target_match)):
+                o.write(','.join([self.target[i],str(i),self.target_match_unique[i],self.target_match[i]]))
+
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class InputError(Error):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        expression -- input expression in which the error occurred
+        message -- explanation of the error
+
+    def __init__(self, expression, message):
+        self.expression = expression
+        self.message = message    
+    """
+    pass
+class Designer:
+    def __init__(self,target_silva_accession=str(),target_fastafile=str(),
+    sequence_file=str(),sequence_silva_taxid=int()):
+        if not(target_silva_accession or target_fastafile and not (target_silva_accession and target_fastafile)):
+            raise InputError("error")
+        

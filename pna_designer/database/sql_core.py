@@ -1,11 +1,15 @@
 import sqlite3
 
+
 class sqldb():
     def __init__(self,db_file=str()):
         self.conn,self.c = self.connect(db_file)
         
+
     def connect(self,db):
         conn = sqlite3.connect(db)
+        #this allows row elements to be called by columns
+        conn.row_factory = sqlite3.Row
         c = conn.cursor()
         return(conn,c)
 
@@ -69,6 +73,8 @@ class sqldb():
     #get values from specified columns. all columns are 
     #returned if nothing is passed
     def get_rows_bycolvalue(self,table_name,valuecolumn,values,columns=['*']):
+        if type(columns) == str:
+            columns=[columns]
         if type(values) == type(list()):
             values = [str(el) for el in values]
             vals = "'"+"', '".join(values)+"'"

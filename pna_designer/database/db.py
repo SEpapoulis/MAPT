@@ -1,6 +1,8 @@
 from .sql_core import sqldb
 from .parser import gzip_fasta,gzip_table
 from .TreeOfLife import load_ToL
+from collections import namedtuple
+
 
 class silva_db():
     def __init__(self,dbfile,tree_file=str()):
@@ -14,7 +16,9 @@ class silva_db():
 
 
         self.tables=['seqs','taxmap','tax','embl']
-
+        #NOTE: accessions also have genomic location, true accessions
+        #      are accessions.split('.')[0], where locations are [1] and [2]
+        
         #accession is primary key
         self.seqs_columns = [('accession', 'TEXT'),
                                 ('path', 'TEXT'),
@@ -25,6 +29,7 @@ class silva_db():
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
                                 ('taxid','INTEGER')]
+        self.taxmap_row = namedtuple('row', [el[0] for el in self.taxmap_columns])
 
         #accession is primary key
         self.embl_columns = [('accession', 'TEXT'), 
@@ -37,7 +42,9 @@ class silva_db():
                                 ('release','INTEGER')]
 
         #used as a error check for inputs
-        self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
+        if self.db.table_exists('tax'):
+            self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
+
     def _col_names(self,table_columns):
         return([el[0] for el in table_columns])
 
@@ -91,6 +98,8 @@ class silva_db():
             to_db.append(dat)
         f.close()
         self.db.insert_rows('tax',tax_cols,to_db)
+        #if we add tax, we must construct _ranks
+        self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
         
     def add_embl(self,embl_file):
         self.db.drop_table('embl')
@@ -108,34 +117,66 @@ class silva_db():
                                         values=accessions,columns=['accession','seq'])
         return(seqs)
 
-    def get_name(self,identifier):
-        at=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='taxid',
-                                        values=rank.lower(),columns=['path','taxid'])
 
-    #Using rank to limit searchspace, we look for the name among 
-    def get_taxon_byname(self,name,rank):
-        if rank not in self._ranks:
-            raise ValueError("{} is not a phylogenetic rank, please specifyone of the following:\n{}".format(
-                rank,'\n'.join(self._ranks)))
-
-        dat=self.db.get_rows_bycolvalue(table_name='tax',valuecolumn='rank',
-                                        values=rank.lower(),columns=['path','taxid'])
-        names = {el[0].split(';')[-2].lower():el[1] for el in dat}
-        if name.lower() in names.keys():
-            taxid=names[name.lower()]
-            print("{} taxid = {}".format(name,str(taxid)))
-            return(taxid)
+    def get_organism_byname(self,name):
+        name=name.lower()
+        dat=self.db.get_columns(table_name='taxmap',columns=['organism_name','accession','path','taxid'])
+        found = []
+        for row in dat:
+            try:
+                if name in row['organism_name'].lower():
+                    found.append(row)
+            except IndexError:
+                print(row)
+        if found:
+            print('Matches:')
+            for row in found:
+                print('\n\tName:       {}\n\tAccession:  {}\n\tTaxon:      {}\n\ttaxid:      {}'
+                    .format(row['organism_name'],row['accession'],row['path'],row['taxid']))
         else:
-            print("{} was not found in the taxanomic rank of {}".format(name,rank))
-        
+            print('Sorry, no matches\n')
+        return(found)
 
-    def get_descendant_accessions(self,taxid):
+    def get_taxon_byname(self,name):
+        name=name.lower()
+        dat=self.db.get_columns(table_name='tax',columns=['path','taxid','rank'])
+        found = list()
+        for row in dat:
+            if name in row['path'].split(';')[-2].lower():
+                found.append(row)
+        if found:
+            print('Matches:')
+            for row in found:
+                
+                print('\n\tTaxon:  {}\n\ttaxid:  {}\
+                    \n\trank:   {}'.format(row['path'],row['taxid'],row['rank']))
+        else:
+            print('Sorry, no matches\n')
+        return(found)        
+
+    #this will use the tree of life to get all descendant taxids
+    def get_descendant_taxids(self,taxid):
         taxids=[]
         node = self.ToL[taxid]
         for childnode in node.children:
             if childnode.children:
-                taxids.extend(self.get_descendant_accessions(childnode.taxid))
+                taxids.extend(self.get_descendant_taxids(childnode.taxid))
             else:
                 taxids.append(childnode.taxid)
         return(taxids)
+    
+    def get_accessions(self,taxid):
+        accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='taxid',
+                                        values=taxid,columns='accession')
+        return(accessions)
 
+    def get_accession_dat(self,accession):
+        accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='accession',
+                                        values=accession)
+        return(accessions)
+
+    def get_sequence_dat(self,accession):
+        seq_dat=self.db.get_rows_bycolvalue(table_name='seqs',valuecolumn='accession',
+                                        values=accession)
+        return(seq_dat)
+    
