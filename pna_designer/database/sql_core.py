@@ -98,6 +98,27 @@ class sqldb():
         for row in self.c:
             yield(row)
     
+    def add_column(self,table,column):
+        col,coltype=column
+        self.c.execute("ALTER TABLE {t} ADD COLUMN {c} {ct}".format(t=table,c=col,ct=coltype))
+
+    def copycol_bypk(self,table,tablesource,keycol,datcol):
+        cols=self.table_col_info(tablesource)
+        cols={el['name']:el for el in cols}
+        if keycol not in cols:
+            raise Exception("keycol not found in {}".format(tablesource))
+        if datcol not in cols:
+            raise Exception("datcol not found in {}".format(tablesource))
+
+        #creating a new column in table named datcol with datcol type from tablesource
+        self.add_column(table,(datcol,cols[datcol]['type']))
+        
+        #populate column where keycol table == keycol tablesource
+        self.c.execute("UPDATE {t} SET {dc} = (SELECT {dc} FROM {ts} WHERE {kc} = {t}.{kc})".format(
+            t= table , ts = tablesource, kc=keycol, dc=datcol
+        ))
+        self.conn.commit()
+
     '''this is a sample funciton from a tutorial
     def values_in_col(self, table_name, print_out=True):
         """ Returns a dictionary with columns as keys

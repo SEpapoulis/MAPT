@@ -83,14 +83,11 @@ class silva:
 
         #we need to complie a database if there is not one already
         #TODO: add except EOFError to downloads to retry failed downloads
+        #WARNING: right now, the db is compiled with all or none while silva_db can partially compile db 
         self.db_file = os.path.join(self.location,'sql.db')
         if not os.path.exists(self.db_file):
             #create new database and add tables
-            self.db = silva_db(self.db_file,self.tree_file)
-            self.db.add_fasta(self.fasta_file)
-            self.db.add_taxmap(self.taxmap_file)
-            self.db.add_tax(self.tax_file)
-            self.db.add_embl(self.embl_file)
+            self.db = silva_db(self.db_file,self.tree_file,self.fasta_file,self.taxmap_file,self.tax_file,self.embl_file)
         else:
             self.db = silva_db(self.db_file,self.tree_file)
 
@@ -155,7 +152,6 @@ class silva:
 
     
 class PNA:
-
     def __init__(self,target_sequence=str,sequences=list):
 
         self.target= target_sequence.upper()

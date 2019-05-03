@@ -1,49 +1,80 @@
 from .sql_core import sqldb
 from .parser import gzip_fasta,gzip_table
 from .TreeOfLife import load_ToL
-from collections import namedtuple
 
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class InputError(Error):
+    """Exception raised for errors in the input.
+
+    Attributes:
+        expression -- input expression in which the error occurred
+        message -- explanation of the error
+
+    def __init__(self, expression, message):
+        self.expression = expression
+        self.message = message    
+    """
+    pass
+
+
+#TODO: taxmap and embl are redundant!!!! merge the two into one spreadsheet
+#       Ideally, put ncbi_taxid as a column in taxmap
 
 class silva_db():
-    def __init__(self,dbfile,tree_file=str()):
+    def __init__(self,dbfile,tree_file=str(),fasta_file=str(),
+    taxmap_file=str(),tax_file=str(),embl_file=str()):
 
         self.db = sqldb(dbfile)
 
         #Tree of life is a dictionary of nodes
         #nodes have references to parent and child(ren) nodes
-        if tree_file:
-            self.ToL=load_ToL(tree_file)
 
-
-        self.tables=['seqs','taxmap','tax','embl']
+        self.tables=('seqs','taxmap','tax','embl')
         #NOTE: accessions also have genomic location, true accessions
         #      are accessions.split('.')[0], where locations are [1] and [2]
         
         #accession is primary key
-        self.seqs_columns = [('accession', 'TEXT'),
+        self.seqs_columns = (('accession', 'TEXT'),
                                 ('path', 'TEXT'),
-                                ('seq','TEXT')]
+                                ('seq','TEXT'))
         
         #accession is primary key
-        self.taxmap_columns = [('accession', 'TEXT'), 
+        self.taxmap_columns = (('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
-                                ('taxid','INTEGER')]
-        self.taxmap_row = namedtuple('row', [el[0] for el in self.taxmap_columns])
+                                ('taxid','INTEGER'))
 
         #accession is primary key
-        self.embl_columns = [('accession', 'TEXT'), 
+        #NOTE:ncbi_taxid is moved to taxmap and this table is dropped from the db
+        self.embl_columns = (('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
-                                ('ncbi_taxid','INTEGER')]
+                                ('ncbi_taxid','INTEGER'))
         #taxid primary key
-        self.tax_columns = [('path', 'TEXT'), ('taxid', 'INTEGER'), 
+        self.tax_columns = (('path', 'TEXT'), ('taxid', 'INTEGER'), 
                                 ('rank','TEXT'), ('remark', 'TEXT'), 
-                                ('release','INTEGER')]
+                                ('release','INTEGER'))
 
+        #Adding data
+        if tree_file:
+            self.ToL=load_ToL(tree_file)
+        if fasta_file:
+            self.add_fasta(fasta_file)
+        if taxmap_file:
+            self.add_taxmap(taxmap_file)
+        if tax_file:
+            self.add_tax(tax_file)
+        if embl_file:
+            self.add_embl(embl_file)
+            if self.db.table_exists('taxmap'):
+                self.db.copycol_bypk('taxmap','embl','accession','ncbi_taxid')
+                self.db.drop_table('embl')
         #used as a error check for inputs
         if self.db.table_exists('tax'):
-            self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
+            self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])     
 
     def _col_names(self,table_columns):
         return([el[0] for el in table_columns])
@@ -100,7 +131,7 @@ class silva_db():
         self.db.insert_rows('tax',tax_cols,to_db)
         #if we add tax, we must construct _ranks
         self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
-        
+            
     def add_embl(self,embl_file):
         self.db.drop_table('embl')
         self.db.create_table('embl',columns=self.embl_columns,
@@ -170,13 +201,41 @@ class silva_db():
                                         values=taxid,columns='accession')
         return(accessions)
 
-    def get_accession_dat(self,accession):
+    def get_accession_dat(self,accession,get_columns=None):
+        if get_columns==None:
+            get_columns = [el[0] for el in self.taxmap_columns]
+
         accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='accession',
                                         values=accession)
         return(accessions)
 
-    def get_sequence_dat(self,accession):
+    def get_sequence_dat(self,accession,get_columns=None):
+        if get_columns==None:
+            get_columns = [el[0] for el in self.seqs_columns]
         seq_dat=self.db.get_rows_bycolvalue(table_name='seqs',valuecolumn='accession',
-                                        values=accession)
+                                        values=accession,columns=get_columns)
         return(seq_dat)
     
+    def write_fasta(self,accessions,fasta_file,include_taxid=False,include_path=False,
+                   include_organism_name=False,include_NCBItaxid=False):
+        taxmap_metadata=[]
+        if include_path:
+            taxmap_metadata.append('path')
+        if include_taxid:
+            taxmap_metadata.append('taxid')
+        if include_organism_name:
+            taxmap_metadata.append('organism_name')
+        if taxmap_metadata:
+            metadata=self.db.get_rows_bycolvalue(table_name='embl',valuecolumn='accession',
+                                            values='accession',columns=taxmap_metadata)
+        
+        if include_NCBItaxid:
+            temp=self.db.get_rows_bycolvalue(table_name='embl',valuecolumn='accession',
+                                        values='accession',columns=['accession,ncbi_taxid'])
+            accession_NCBI = {el['accession']:el['ncbi_taxid'] for el in temp}
+        else:
+            accession_NCBI={}
+
+        
+
+
