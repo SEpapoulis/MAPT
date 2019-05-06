@@ -142,12 +142,6 @@ class silva_db():
             accession = '.'.join(line[0:3])
             to_db.append([accession]+line[3:])
         self.db.insert_rows('embl',embl_cols,to_db)
-        
-    def get_seqs(self,accessions):
-        seqs=self.db.get_rows_bycolvalue(table_name='seqs',valuecolumn='accession',
-                                        values=accessions,columns=['accession','seq'])
-        return(seqs)
-
 
     def get_organism_byname(self,name):
         name=name.lower()
@@ -199,7 +193,7 @@ class silva_db():
     def get_accessions(self,taxid):
         accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='taxid',
                                         values=taxid,columns='accession')
-        return(accessions)
+        return([el['accession'] for el in accessions])
 
     def get_accession_dat(self,accession,get_columns=None):
         if get_columns==None:
@@ -216,6 +210,7 @@ class silva_db():
                                         values=accession,columns=get_columns)
         return(seq_dat)
     
+    #TODO:FINISH
     def write_fasta(self,accessions,fasta_file,include_taxid=False,include_path=False,
                    include_organism_name=False,include_NCBItaxid=False):
         taxmap_metadata=[]

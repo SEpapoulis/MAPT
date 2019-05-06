@@ -27,7 +27,7 @@ columns: pac, start, stop ,path ,name, taxid
 
 
 import os
-from . import ftp
+from . import ftp,InSilico_PCR
 from .database.db import silva_db
 from .database import parser
 from collections import defaultdict
@@ -152,7 +152,7 @@ class silva:
 
     
 class PNA:
-    def __init__(self,target_sequence=str,sequences=list):
+    def __init__(self,target_sequence=str,sequences=list(),krange=tuple()):
 
         self.target= target_sequence.upper()
 
@@ -166,7 +166,10 @@ class PNA:
         #dictoinary mapping to defaultdicts of kmer counts
         #note, if kdict[k][kmer] == 0, that means this kmer is unique
         #to the target sequence!
-        self.kdict={}
+        self.kdict=defaultdict(int)
+
+        #Inclusive range
+        self.krng=list((range(krange[0],krange[1]+1)))
 
         #seqlist is a list of sequences that you DO NOT want to block
         #thus, you want the area of target that shares the least number
@@ -196,6 +199,14 @@ class PNA:
             self.add_kmers(k)
         print("\t Gathering Complete!")
 
+    def exp_add_kmers(self,seq):
+        seq=seq.upper()
+        for i in range(0,len(seq)):
+            for k in self.krng:
+                if i+k <len(seq):
+                    self.kdict[seq[i:i+k]]+=1
+                
+
     def map_kmers(self):
         for k in self.kdict:
             for i in range(k,len(self.target)+1):
@@ -206,7 +217,9 @@ class PNA:
                         self.target_match_unique[align]+=1
                         self.target_match[align]+=seq_kmer
 
-    def write_results(self,write_file=os.path.join(os.getcwd(),'KmerCoordiantes.csv')):
+    def write_results(self,write_file=str()):
+        if not write_file:
+            write_file=os.path.join(os.getcwd(),'KmerCoordiantes.csv')
         with open(write_file,'w') as o:
             o.write('Nuclotide,index,unique match, absolute match')
             for i in range(0,len(self.target_match)):
@@ -228,9 +241,71 @@ class InputError(Error):
         self.message = message    
     """
     pass
+
+
+def _XOR(a,b):
+    return(bool(a) != bool(b))
+
 class Designer:
     def __init__(self,target_silva_accession=str(),target_fastafile=str(),
-    sequence_file=str(),sequence_silva_taxid=int()):
-        if not(target_silva_accession or target_fastafile and not (target_silva_accession and target_fastafile)):
-            raise InputError("error")
+    sequence_file=str(),sequence_silva_taxid=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
+    silva_dataset='ref',subunit='small',database_location=str()):
+
+        self.target = () #tuple of (accession,seq)
+        self.primer_F = primer_F
+        self.primer_R = primer_R
+        self.failed_amplification=[]
+
+        #raise an error if the correct sequencing data was not provided
+        #both or missing or both a provided throws an error
+        if not _XOR(target_silva_accession,target_fastafile):
+            raise InputError("Please provide either a silva accession or a target fasta file")
+
+        if not _XOR(sequence_file,sequence_silva_taxid):
+            raise InputError("Please provide either a fasta file or a silva taxonomic ID")
+
+        if _XOR(self.primer_F,self.primer_R):
+            raise InputError("You must provide both Forward and Reverse primers")
+
+        #initialize the silva database
+        if target_silva_accession or sequence_silva_taxid:
+            self.silva = silva(location=database_location,dataset=silva_dataset, subunit=subunit)
+
+        #getting the target sequence
+        if target_fastafile:
+            for i,line in enumerate(self.iter_fasta(target_fastafile)):
+                self.target = line
+                if i > 0:
+                    raise InputError("You can only design a PNA for a single sequence or consensus sequence")
+        #no target_fasta, get silva
+        else:
+            dat=self.silva.db.get_sequence_dat(target_silva_accession,['accession','seq'])[0]
+            self.target = (dat['accession'],dat['seq'])
+
+        #amplify target if needed
+        if primer_F and primer_R:
+            target_amplicon=InSilico_PCR.sim_amplify(self.primer_F,self.primer_R,self.target[1])
+            self.target = (self.target[0],target_amplicon)
+
+        self.pna = PNA(target_sequence=self.target[1],krange = kmer_range)
+        
+        
+
+    def iter_fasta(self,file):
+        f=open(file,'r')
+        seq=''
+        key=''
+        for line in f:
+            if line[0] == '>':
+                if key!='':
+                    yield ((key,seq))
+                key=line.strip()
+                seq=''
+            else:
+                temp=line.strip()#removing end of line
+                temp=temp.replace(' ',' ')#removing any possible spaces
+                seq+=temp
+        if key:#just incase file is empty
+            yield ((key,seq))
+        f.close()
         
