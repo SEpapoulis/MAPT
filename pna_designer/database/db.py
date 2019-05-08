@@ -42,10 +42,12 @@ class silva_db():
                                 ('seq','TEXT'))
         
         #accession is primary key
+        #TODO: reflect actual table!
+        #TODO: Add seqs to this to reduce redundancy!
         self.taxmap_columns = (('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
-                                ('taxid','INTEGER'))
+                                ('taxid','INTEGER'),)
 
         #accession is primary key
         #NOTE:ncbi_taxid is moved to taxmap and this table is dropped from the db
@@ -180,7 +182,7 @@ class silva_db():
         return(found)        
 
     #this will use the tree of life to get all descendant taxids
-    def get_descendant_taxids(self,taxid):
+    def _recursive_descendant_taxids(self,taxid):
         taxids=[]
         node = self.ToL[taxid]
         for childnode in node.children:
@@ -189,7 +191,11 @@ class silva_db():
             else:
                 taxids.append(childnode.taxid)
         return(taxids)
-    
+    def get_descendant_taxids(self,taxid):
+        taxids = self._recursive_descendant_taxids(taxid)
+        taxids.append(taxid)
+        return(taxids)
+
     def get_accessions(self,taxid):
         accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='taxid',
                                         values=taxid,columns='accession')

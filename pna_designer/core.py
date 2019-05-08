@@ -153,9 +153,11 @@ class silva:
     
 class PNA:
     def __init__(self,target_sequence=str,sequences=list(),krange=tuple()):
+        #Inclusive range
+        self.krng=list((range(krange[0],krange[1]+1)))
 
         self.target= target_sequence.upper()
-
+        self.target_klocation = self.get_target_kmermap()
         #coordiantes for unique kmers that align
         self.target_match_unique = [0]*len(self.target)
 
@@ -164,42 +166,25 @@ class PNA:
         self.target_match = [0]*len(self.target)
 
         #dictoinary mapping to defaultdicts of kmer counts
-        #note, if kdict[k][kmer] == 0, that means this kmer is unique
+        #note, if kdict[kmer] == 0, that means this kmer is unique
         #to the target sequence!
         self.kdict=defaultdict(int)
 
-        #Inclusive range
-        self.krng=list((range(krange[0],krange[1]+1)))
 
-        #seqlist is a list of sequences that you DO NOT want to block
-        #thus, you want the area of target that shares the least number
-        #of kmers with seqlist
-        self.seqlist = [seqs.upper() for seqs in sequences]
+    def get_target_kmermap(self):
+        kmer_location={}
+        for k in self.krng:
+            for i in range(k,len(self.target)+1):
+                start=i-k
+                stop =i 
+                kmer = self.target[start:stop]
+                if kmer in kmer_location:
+                    kmer_location[kmer].append((start,stop))
+                else:
+                    kmer_location[kmer] = [range(start,stop)]
+        return(kmer_location)
 
-    def get_kmers(self,k,seqlist):
-        kmers=[]
-        for seq in seqlist:
-            seq=seq.lower()
-            for i in range(k,len(seq)):
-                kmers.append(seq[i-k:i])
-        return(set(kmers))
-
-    def add_kmers(self,k):
-        kmers = defaultdict(int)
-        for seq in self.seqlist:
-            for i in range(k,len(seq)):
-                kmer=seq[i-k:i]
-                kmers[kmer]+=1
-        self.kdict[k] = kmers
-                
-    def add_kmerrng(self,start,end):
-        print("Gathering kmer range {}-{}".format(str(start),str(end)))
-        for k in range(start,end+1):
-            print("\tGathering {}-mers".format(str(k)),end='\r')
-            self.add_kmers(k)
-        print("\t Gathering Complete!")
-
-    def exp_add_kmers(self,seq):
+    def add_kmers(self,seq):
         seq=seq.upper()
         for i in range(0,len(seq)):
             for k in self.krng:
@@ -208,22 +193,27 @@ class PNA:
                 
 
     def map_kmers(self):
-        for k in self.kdict:
-            for i in range(k,len(self.target)+1):
-                #seq_kmer is the number of kmers in seqlist
-                seq_kmer = self.kdict[k][self.target[i-k:i]]
-                if seq_kmer:
-                    for align in list(range(i-k,i+1)):
-                        self.target_match_unique[align]+=1
-                        self.target_match[align]+=seq_kmer
+        for kmer in self.kdict:
+            if kmer in self.target_klocation:
+                locations = self.target_klocation[kmer]
+                for location in locations:
+                    loc = list(location)
+                    for i in loc:
+                        self.target_match_unique[i]+=1
+                        self.target_match[i]+=self.kdict[kmer]
 
     def write_results(self,write_file=str()):
         if not write_file:
             write_file=os.path.join(os.getcwd(),'KmerCoordiantes.csv')
+        else:
+            write_file=os.path.join(write_file)
         with open(write_file,'w') as o:
             o.write('Nuclotide,index,unique match, absolute match')
             for i in range(0,len(self.target_match)):
-                o.write(','.join([self.target[i],str(i),self.target_match_unique[i],self.target_match[i]]))
+                o.write('\n')
+                o.write(','.join([self.target[i],str(i),
+                str(self.target_match_unique[i]),str(self.target_match[i])]))
+                
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -249,7 +239,7 @@ def _XOR(a,b):
 class Designer:
     def __init__(self,target_silva_accession=str(),target_fastafile=str(),
     sequence_file=str(),sequence_silva_taxid=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
-    silva_dataset='ref',subunit='small',database_location=str()):
+    silva_dataset='ref',subunit='small',database_dir=str(),results_file=str()):
 
         self.target = () #tuple of (accession,seq)
         self.primer_F = primer_F
@@ -269,7 +259,7 @@ class Designer:
 
         #initialize the silva database
         if target_silva_accession or sequence_silva_taxid:
-            self.silva = silva(location=database_location,dataset=silva_dataset, subunit=subunit)
+            self.silva = silva(location=database_dir,dataset=silva_dataset, subunit=subunit)
 
         #getting the target sequence
         if target_fastafile:
@@ -289,7 +279,34 @@ class Designer:
 
         self.pna = PNA(target_sequence=self.target[1],krange = kmer_range)
         
+        #Lets starting adding sequences to make our PNA
+        if sequence_silva_taxid:
+            sequence_iterator = self.iter_silvatax(sequence_silva_taxid)
+            self.test=sequence_iterator
+        else:
+            sequence_iterator = self.iter_fasta(sequence_file)
         
+        #if amplifying targets 
+        if self.primer_F and self.primer_R:
+            print("Amplifying and Collecting sequence Kmers")
+            for accession,sequence in sequence_iterator:
+                try:
+                    seq = InSilico_PCR.sim_amplify(self.primer_F,self.primer_R,sequence)
+                    self.pna.add_kmers(seq)
+                except InSilico_PCR.PrimerError:
+                    self.failed_amplification.append(accession)
+        
+        #mapping kmers to target
+        print("Mapping Kmers")
+        self.pna.map_kmers()
+        self.pna.write_results(results_file)
+                
+
+    def iter_silvatax(self,parent_taxid):
+        taxids = self.silva.db.get_descendant_taxids(parent_taxid)
+        dat = self.silva.db.get_sequence_dat(self.silva.db.get_accessions(taxids),['accession','seq'])
+        for row in dat:
+            yield tuple(row)
 
     def iter_fasta(self,file):
         f=open(file,'r')
