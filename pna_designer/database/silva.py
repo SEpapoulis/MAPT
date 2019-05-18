@@ -50,10 +50,11 @@ class InputError(Error):
     pass
 
 #TODO
+#add the ability to fetch different versions
 #API for DNA to block and lookup funcitons for DNA    
 #Put the path building into its own module, it makes the core too messy
 #Kmer analysis- might want to try and do a cython implimitation to get it fast
-
+#add except EOFError to downloads to retry failed downloads
 
 class silva_manager:
     def __init__(self,location=str(),dataset='ref', subunit='small'):
@@ -68,49 +69,42 @@ class silva_manager:
         
         #Currently, we fetch the version number of the current release
         #TODO: add the ability to fetch different versions
-        self.version_file = os.path.join(self.location,'version')
-        if not os.path.exists(self.version_file):     
-            self.version = self._find_release()
-        else:
-            f = open(self.version_file,'r')
-            self.version = f.readline()
-            f.close()
 
         #Generating the filenames for the database
-        fasta_file,taxmap_file,tax_file,embl_file,tree_file = self._generate_filenames(dataset,subunit)
-        self.fasta_file = os.path.join(self.location,fasta_file)
-        self.taxmap_file = os.path.join(self.location,taxmap_file)
-        self.tax_file = os.path.join(self.location,tax_file)
-        self.embl_file = os.path.join(self.location,embl_file)
-        self.tree_file = os.path.join(self.location,tree_file)
+        self.__generate_filenames(dataset,subunit)
+
+        if os.path.exists(self.db_file):
+            self.db = silva_db(self.db_file,self.tree_file)
+        else:
+            self.__build_protocol()
+            
 
 
-        #lets check if these files exsist, if not lets download
+
+    def __build_protocol(self):
         host = 'ftp.arb-silva.de/current/Exports/'
         host_tax = host+'taxonomy/'
         if not os.path.exists(self.fasta_file):
-            self._fetch_file(host+fasta_file)
+            self._fetch_file(host+os.path.basename(self.fasta_file))
         if not os.path.exists(self.taxmap_file):
-            self._fetch_file(host_tax+taxmap_file)
+            self._fetch_file(host_tax+os.path.basename(self.taxmap_file))
         if not os.path.exists(self.tax_file):
-            self._fetch_file(host_tax+tax_file)
+            self._fetch_file(host_tax+os.path.basename(self.tax_file))
         if not os.path.exists(self.embl_file):
-            self._fetch_file(host_tax+embl_file)
+            self._fetch_file(host_tax+os.path.basename(self.embl_file))
         if not os.path.exists(self.tree_file):
-            self._fetch_file(host_tax+tree_file)
+            self._fetch_file(host_tax+os.path.basename(self.tree_file))
 
+        self.db = silva_db(self.db_file,self.tree_file,self.fasta_file,self.taxmap_file,self.tax_file,self.embl_file)
 
-        #we need to complie a database if there is not one already
-        #TODO: add except EOFError to downloads to retry failed downloads
-        #WARNING: right now, the db is compiled with all or none while silva_db can partially compile db 
-        self.db_file = os.path.join(self.location,'sql.db')
-        if not os.path.exists(self.db_file):
-            #create new database and add tables
-            self.db = silva_db(self.db_file,self.tree_file,self.fasta_file,self.taxmap_file,self.tax_file,self.embl_file)
-        else:
-            self.db = silva_db(self.db_file,self.tree_file)
+        #cleanup
+        
+        os.remove(self.fasta_file)
+        os.remove(self.taxmap_file)
+        os.remove(self.tax_file)
+        os.remove(self.embl_file)
 
-    def _generate_filenames(self,dataset,subunit):
+    def __generate_filenames(self,dataset,subunit):
         # * is wildcard for silva release number
         if subunit not in ('small','large'):
             raise ValueError("Invalid subunit, must be either small (16S,18S), or large (23S,28S)")
@@ -143,14 +137,15 @@ class silva_manager:
             tax_file=tax_file.replace('ssu','lsu')
             embl_file=embl_file.replace('ssu','lsu')
             tree_file=tree_file.replace('ssu','lsu')
-        
-        self.release = self._find_release()
-        fasta_file=fasta_file.replace('*',self.release)
-        taxmap_file=taxmap_file.replace('*',self.release)
-        tax_file=tax_file.replace('*',self.release)
-        embl_file=embl_file.replace('*',self.release)
-        tree_file=tree_file.replace('*',self.release)
-        return(fasta_file,taxmap_file,tax_file,embl_file,tree_file)
+
+        self.db_file = os.path.join(self.location,'sql.db')
+        self.version_file= os.path.join(self.location,'version')
+        self.__load_version()
+        self.fasta_file=os.path.join(self.location,fasta_file.replace('*',self.release))
+        self.taxmap_file=os.path.join(self.location,taxmap_file.replace('*',self.release))
+        self.tax_file=os.path.join(self.location,tax_file.replace('*',self.release))
+        self.embl_file=os.path.join(self.location,embl_file.replace('*',self.release))
+        self.tree_file=os.path.join(self.location,tree_file.replace('*',self.release))
 
     def _find_release(self):
         #finding the current release
@@ -158,20 +153,28 @@ class silva_manager:
         file_list = DE.listdir('current/Exports/')
         for f in file_list:
             if '_SSURef_tax_silva.fasta.gz' in f:
-                version = f.split('_')[1]
+                release = f.split('_')[1]
                 f = open(self.version_file,'w')
-                f.write(version+'\n')
+                f.write(release+'\n')
                 f.close()
-                return(version)
+                return(release)
 
     def _fetch_file(self,target_file):
         DE = ftp.Download_Engine('ftp.arb-silva.de',destination = self.location)
         DE.add_target(target_file)
         DE.download()
 
+    def __load_version(self):
+        if os.path.exists(self.version_file):
+            f = open(self.version_file,'r')
+            self.release = f.readline().strip()
+            f.close()
+        else:
+            self.release = self._find_release()
 
-#TODO: taxmap and embl are redundant!!!! merge the two into one spreadsheet
-#       Ideally, put ncbi_taxid as a column in taxmap
+#TODO: 
+#dropping the tables to then add them to another is a very expensive operation,
+#I should just pull them into memeory since they are going to take, at the most 100 meg
 
 class silva_db():
     def __init__(self,dbfile,tree_file=str(),fasta_file=str(),
