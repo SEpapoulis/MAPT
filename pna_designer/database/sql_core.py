@@ -119,7 +119,15 @@ class sqldb():
         ))
         self.conn.commit()
 
-    '''this is a sample funciton from a tutorial
+    #This is a work in progress, still unclear how to use extentions
+    #def spelling(self,table,column):
+    #    self.c.execute("CREATE VIRTUAL TABLE demo USING spellfix1")
+    #    self.c.execute("INSERT INTO demo(word) SELECT {} FROM {};".format(column,table))
+    #    self.conn.commit()
+    
+    
+    
+        '''this is a sample funciton from a tutorial
     def values_in_col(self, table_name, print_out=True):
         """ Returns a dictionary with columns as keys
         and the number of not-null entries as associated values.

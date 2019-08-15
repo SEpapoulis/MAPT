@@ -5,13 +5,40 @@ from collections import defaultdict
 
 
     
-class PNA:
-    def __init__(self,target_sequence=str,sequences=list(),krange=tuple()):
+class k_mapper:
+    '''Simple class for generating and mapping k-mers
+
+    Nucleotide sequences can be sampled to find subsequences of 
+    k length, otherwise refered to as k-mers. k-mers are generated from 
+    a group of sequences and subsequently mapped to a target sequence. 
+    Degeneracy/ambiguity in sequences are supported, however, poor quality
+    sequences with too many ambiguous nuclotides will inflate mapping results.
+    
+    Parameters
+    ----------
+        target_sequence: str
+            Nuclotide sequence that k-mers will be mapped to.
+        sequences : list of str
+            Nuclotide sequences that k-mers will be generated from.
+        krange: tuple of ints, optional
+            Size range of k-mers to be generated. Inclusive. Default: (9,14)
+
+    Attributes
+    ----------
+        target : str
+            Where k-mers are being mapped
+        target_match : list of ints
+            k-mer mapping result, number of times a k-mer mapped to a specific index in the target sequence
+        target_match_unique : list of ints
+            k-mer mapping result, number of times a unique k-mer mapped to a specific index in the target sequence
+
+    '''
+    def __init__(self,target_sequence,sequences=list(),krange=tuple([9,14])):
         #Inclusive range
         self.krng=list((range(krange[0],krange[1]+1)))
 
         self.target= target_sequence.upper()
-        self.target_klocation = self.get_target_kmermap()
+        self._target_klocation = self._get_target_kmermap()
         #coordiantes for unique kmers that align
         self.target_match_unique = [0]*len(self.target)
 
@@ -20,12 +47,14 @@ class PNA:
         self.target_match = [0]*len(self.target)
 
         #dictoinary mapping to defaultdicts of kmer counts
-        #note, if kdict[kmer] == 0, that means this kmer is unique
+        #note, if _kdict[kmer] == 0, that means this kmer is unique
         #to the target sequence!
-        self.kdict=defaultdict(int)
+        self._kdict=defaultdict(int)
 
+        for seq in sequences:
+            self.add_sequence(seq)
 
-    def get_target_kmermap(self):
+    def _get_target_kmermap(self):
         kmer_location={}
         for k in self.krng:
             for i in range(k,len(self.target)+1):
@@ -38,83 +67,145 @@ class PNA:
                     kmer_location[kmer] = [range(start,stop)]
         return(kmer_location)
 
-    def add_kmers(self,seq):
-        seq=seq.upper()
+    def add_sequence(self,sequence):
+        '''Add a sequence that will be used to generate k-mers
+
+        Parameters
+        ----------
+            sequence: str
+                Nuclotide sequence
+        '''
+        seq=sequence.upper()
         for i in range(0,len(seq)):
             for k in self.krng:
                 if i+k <len(seq):
-                    self.kdict[seq[i:i+k]]+=1
-                
+                    self._kdict[seq[i:i+k]]+=1        
 
     def map_kmers(self):
-        for kmer in self.kdict:
-            if kmer in self.target_klocation:
-                locations = self.target_klocation[kmer]
+        '''map kmers to target sequence
+        '''
+        for kmer in self._kdict:
+            if kmer in self._target_klocation:
+                locations = self._target_klocation[kmer]
                 for location in locations:
                     loc = list(location)
                     for i in loc:
                         self.target_match_unique[i]+=1
-                        self.target_match[i]+=self.kdict[kmer]
+                        self.target_match[i]+=self._kdict[kmer]
 
-    def write_results(self,write_file=str()):
-        if not write_file:
-            write_file=os.path.join(os.getcwd(),'KmerCoordiantes.csv')
-        else:
-            write_file=os.path.join(write_file)
-        with open(write_file,'w') as o:
-            o.write('Nuclotide,index,unique match, absolute match')
+    def write_results(self,file_name):
+        '''Generate mapping file
+
+        A spreadsheet will be generated showing the unquie and
+        absolute kmer mappings to the target sequence. The number
+        of absolute mappings is relative to the number of sequences
+        used to generate kmers, thus, absolute mapping will change with
+        the size of the dataset. Columns are the nuclotide of the target,
+        index of target sequence, number of unquie k-mer matches, and 
+        the number of k-mer absolute matches
+
+
+        Parameters
+        ----------
+            file_name: str
+                Mapping file name
+
+        
+        '''
+        with open(file_name,'w') as o:
+            o.write('Nuclotide,index,unique match,absolute match')
             for i in range(0,len(self.target_match)):
                 o.write('\n')
                 o.write(','.join([self.target[i],str(i),
                 str(self.target_match_unique[i]),str(self.target_match[i])]))
                 
 
-class Error(Exception):
-    """Base class for exceptions in this module."""
-    pass
-
-class InputError(Error):
-    """Exception raised for errors in the input.
-
-    Attributes:
-        expression -- input expression in which the error occurred
-        message -- explanation of the error
-
-    def __init__(self, expression, message):
-        self.expression = expression
-        self.message = message    
-    """
+class InputError(Exception):
+    """Raised when user input arguments are incorrect"""
     pass
 
 
 def _XOR(a,b):
     return(bool(a) != bool(b))
 
-class Designer:
-    def __init__(self,target_silva_accession=str(),target_fastafile=str(),
-    sequence_file=str(),sequence_silva_taxid=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
-    silva_dataset='ref',subunit='small',database_dir=str(),results_file=str()):
+class PNA_Designer:
+    '''A tool used to streamline the design of PNA oligos used for blocking
+    amplificaiton of specific DNAs during PCR amplificaiton 
+    
+    PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunatly,
+    no single PNA is universal in blocking DNA, thus, each requires testing in order to determine
+    the sequence space being blocked during amplificaiton. This tool automates inital *in silico* 
+    analysis required for development of a new PNA. To complement automatic analysis, this tool
+    also makes data access more convient by utilizing RNA sequence data avalible
+    at the `Silva database <https://www.arb-silva.de/>`_. Silva identifiers can be used to 
+    specify either the PNA target sequence or sequences concidered in the analysis. A copy of silva
+    datasets will be download and then compiled. 
+
+    Parameters
+    ----------
+        results_file: str
+            The name of the output file
+        target_silva_accession : str, optional
+            Silva accession of PNA target. Required if "target_fastafile" is not provided.
+        target_fastafile: str, optional
+            Fasta file with PNA target. File should only have PNA target sequence. Required if
+            "target_silva_accession" is not provided.
+        sequence_file: str, optional
+            Fasta file used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
+        sequence_silva_taxid: int, optional
+            Silva taxid used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
+        primer_F: str, optional
+            Forward primer used for the in silico amplification. If not specified, the full sequence
+            of the PNA target and sequences for PNA design will be used. 
+        primer_R: str, optional
+            Reverse primer used for the in silico amplification. If not specified, the full sequence
+            of the PNA target and sequences for PNA design will be used. 
+        kmer_range: tupple, optional
+            Kmer range used in PNA design. Defaults range: 9-14
+        silva_dataset: str, optional
+            Silva Database used to fetch seqeucnes. Avalible options are **parc** (all sequences),
+            **ref** (high quality sequences), or **nr** (non-redundant, clustered 
+            99% identity criterion). Defaults to **nr**
+        subunit: str, optional
+            Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
+        database_dir: str, optional
+            Local directory of silva database if "target_silva_accession" or 
+            "sequence_silva_taxid" is specified. Defualt locaiton is "~/.pna_designer"
+        
+
+
+    Attributes
+    ----------
+        failed_amplification : list of str
+            If primers are specified, accession's of sequences that do not have an exact match
+            to the primers will be recorded
+    '''
+    def __init__(self,result_file=str(),target_silva_accession=str(),target_fastafile=str(),
+    sequence_file=str(),sequence_silva_path=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
+    silva_dataset='ref',subunit='small',database_dir=str()):
 
         self.target = () #tuple of (accession,seq)
         self.primer_F = primer_F
         self.primer_R = primer_R
         self.failed_amplification=[]
-
+        
         #raise an error if the correct sequencing data was not provided
         #both or missing or both a provided throws an error
         if not _XOR(target_silva_accession,target_fastafile):
             raise InputError("Please provide either a silva accession or a target fasta file")
 
-        if not _XOR(sequence_file,sequence_silva_taxid):
+        if not _XOR(sequence_file,sequence_silva_path):
             raise InputError("Please provide either a fasta file or a silva taxonomic ID")
 
         if _XOR(self.primer_F,self.primer_R):
             raise InputError("You must provide both Forward and Reverse primers")
 
+        
         #initialize the silva database
-        if target_silva_accession or sequence_silva_taxid:
+        if target_silva_accession or sequence_silva_path:
             self.silva = silva_manager(location=database_dir,dataset=silva_dataset, subunit=subunit)
-
+        
+        
         #getting the target sequence
         if target_fastafile:
             for i,line in enumerate(self.iter_fasta(target_fastafile)):
@@ -123,42 +214,49 @@ class Designer:
                     raise InputError("You can only design a PNA for a single sequence or consensus sequence")
         #no target_fasta, get silva
         else:
-            dat=self.silva.db.get_accession_dat(target_silva_accession,['accession','seq'])[0]
-            self.target = (dat['accession'],dat['seq'])
+            dat=self.silva.get_seqs(target_silva_accession)[0]
+            self.target = (dat[0],dat[1])
 
         #amplify target if needed
         if primer_F and primer_R:
+            print("Amplifying PNA target")
             target_amplicon=InSilico_PCR.sim_amplify(self.primer_F,self.primer_R,self.target[1])
             self.target = (self.target[0],target_amplicon)
 
-        self.pna = PNA(target_sequence=self.target[1],krange = kmer_range)
+        #initialize the k-mer mapper
+        self.pna = k_mapper(target_sequence=self.target[1],krange = kmer_range)
         
         #Lets starting adding sequences to make our PNA
-        if sequence_silva_taxid:
-            sequence_iterator = self.iter_silvatax(sequence_silva_taxid)
-            self.test=sequence_iterator
+        if sequence_silva_path:
+            sequence_iterator = self.iter_silvatax(sequence_silva_path)
         else:
             sequence_iterator = self.iter_fasta(sequence_file)
         
         #if amplifying targets 
         if self.primer_F and self.primer_R:
-            print("Amplifying and Collecting sequence Kmers")
+            print("Amplifying and Collecting sequence K-mers")
             for accession,sequence in sequence_iterator:
                 try:
                     seq = InSilico_PCR.sim_amplify(self.primer_F,self.primer_R,sequence)
-                    self.pna.add_kmers(seq)
+                    self.pna.add_sequence(seq)
                 except InSilico_PCR.PrimerError:
                     self.failed_amplification.append(accession)
-        
+            if self.failed_amplification:
+                print('\tWARNING: {} sequences failed to amplify, please see attribute "failed_amplification"'.format(str(len(self.failed_amplification))))
+        else:
+            print("Collecting sequence K-mers")
+            for accession,sequence in sequence_iterator:
+                self.pna.add_sequence(sequence)
+
         #mapping kmers to target
         print("Mapping Kmers")
         self.pna.map_kmers()
-        self.pna.write_results(results_file)
-                
+        print("Mapping Complete")
+        self.pna.write_results(result_file)
 
-    def iter_silvatax(self,parent_taxid):
-        taxids = self.silva.db.get_descendant_taxids(parent_taxid)
-        dat = self.silva.db.get_accession_dat(self.silva.db.get_accessions(taxids),['accession','seq'])
+    def iter_silvatax(self,parent_taxpath):
+        accessions = self.silva.get_accessions(parent_taxpath)
+        dat = self.silva.get_seqs(accessions)
         for row in dat:
             yield tuple(row)
 

@@ -72,14 +72,12 @@ class silva_manager:
 
         #Generating the filenames for the database
         self.__generate_filenames(dataset,subunit)
-
+        
         if os.path.exists(self.db_file):
             self.db = silva_db(self.db_file,self.tree_file)
         else:
             self.__build_protocol()
             
-
-
 
     def __build_protocol(self):
         host = 'ftp.arb-silva.de/current/Exports/'
@@ -130,17 +128,19 @@ class silva_manager:
             tree_file = 'tax_slv_ssu_*.tre'
         else:
             raise ValueError("Invalid dataset, choose one of the following: ref, nr, parc")             
-        
+        dbsu="ssu"
         if subunit == 'large':
             fasta_file=fasta_file.replace('SSU','LSU')
             taxmap_file=taxmap_file.replace('ssu','lsu')
             tax_file=tax_file.replace('ssu','lsu')
             embl_file=embl_file.replace('ssu','lsu')
             tree_file=tree_file.replace('ssu','lsu')
+            dbsu="lsu"
 
-        self.db_file = os.path.join(self.location,'sql.db')
         self.version_file= os.path.join(self.location,'version')
         self.__load_version()
+
+        self.db_file = os.path.join(self.location,'silva{}_{}_{}.db'.format(self.release,dataset,dbsu))
         self.fasta_file=os.path.join(self.location,fasta_file.replace('*',self.release))
         self.taxmap_file=os.path.join(self.location,taxmap_file.replace('*',self.release))
         self.tax_file=os.path.join(self.location,tax_file.replace('*',self.release))
@@ -172,6 +172,108 @@ class silva_manager:
         else:
             self.release = self._find_release()
 
+
+    def find_taxpath(self,taxon_name,print_results=True):
+        '''Search for taxonomic unit in Silva database
+
+        Finds information on the given taxonomic name provided. Spelling must be exact to taxonomic name
+        to find results.
+
+        Parameters
+        ----------
+            taxon_name: str
+                name of taxon to be searched. Case insensitive
+            print_results: bool
+                All entries found will be printed with additional metadata. Default True.
+        Returns
+        ----------
+        taxpaths : list of found taxpaths
+            path of taxonomic units found
+        '''
+        dat = self.db.tax_lookup('search',taxon_name.upper())
+        taxpaths = [el['path'] for el in dat]
+
+        if print_results:
+            print("Total search results: {}".format(str(len(taxpaths))))
+            for entry in dat:
+                numseqs=len(self.get_accessions(entry['path']))
+                results = "\n\tName:       {}\n\tTaxpath:  {}\n\tTaxonomic rank:      {}\n\tNumber of sequence entries:      {}".format(
+                    taxon_name,entry['path'],entry['rank'],str(numseqs)
+                )
+                print(results)
+        return(taxpaths)
+
+    def find_organism(self,name,print_results=True):
+        '''Search for an organism in the Silva database
+
+        You can directly search for a organism by the name. Be aware that only eact matches to the organism name will be shown.
+
+        Parameters
+        ----------
+            name: str
+                name of the organism. Case sensitive. 
+            print_results: bool
+                All entries found will be printed with additional metadata. Default True.
+        Returns
+        ----------
+        accessions : list of silva accessions 
+            Accessions listed with the organism named searched
+        '''
+        dat = self.db.taxmap_lookup('organism_name',name,['organism_name','accession','path'])
+        accessions = [el['accession'] for el in dat]
+
+        if print_results:
+            print("Total search results: {}".format(str(len(accessions))))
+            for entry in dat:
+                results = "\n\tName:       {}\n\tTaxpath:  {}\n\tSilva Accession:      {}\n\t".format(
+                    name,entry['path'],entry['accession']
+                )
+                print(results)
+        return(accessions)
+
+    def get_accessions(self,taxpath):
+        '''Retrieve silva accessions under a specific taxonomic unit
+
+        For a given silva taxonomic path, all accessions under this taxon will be retrieved.
+
+        Parameters
+        ----------
+            taxpath: str
+                Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
+                Use find_taxpath() to search the database for a specific taxpath, or use the silva website
+
+        Returns
+        ----------
+        assoicated sequences : list of silva accessions
+            a list of associated sequences under this taxon
+        '''
+        taxid = self.db.tax_lookup('path',taxpath,retrieve=['taxid'])
+        if taxid:
+            taxids = self.db.get_descendant_taxids(taxid[0]['taxid'])
+            accessions = self.db.taxmap_lookup('taxid',taxids,retrieve=['accession'])
+            return([el['accession'] for el in accessions])
+        return(list())
+    
+    def get_seqs(self,accessions):
+        '''Retrieve silva accessions under a specific taxonomic unit
+
+        For a given silva taxonomic path, all accessions under this taxon will be retrieved.
+
+        Parameters
+        ----------
+            taxpath: str
+                Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
+                Use find_taxpath() to search the database for a specific taxpath, or use the silva website
+
+        Returns
+        ----------
+        assoicated sequences : list of silva accessions
+            a list of associated sequences under this taxon
+        '''
+        dat = self.db.taxmap_lookup('accession',accessions,retrieve=['accession','seq'])
+        return([[el['accession'],el['seq']] for el in dat])
+
+
 #TODO: 
 #dropping the tables to then add them to another is a very expensive operation,
 #I should just pull them into memeory since they are going to take, at the most 100 meg
@@ -202,7 +304,8 @@ class silva_db():
         #taxid primary key
         self.tax_columns = (('path', 'TEXT'), ('taxid', 'INTEGER'), 
                                 ('rank','TEXT'), ('remark', 'TEXT'), 
-                                ('release','INTEGER'))
+                                ('release','INTEGER'),
+                                ('search','TEXT'))
 
         #Adding data
         if tree_file:
@@ -230,16 +333,16 @@ class silva_db():
         if tax_file:
             self.add_tax(tax_file)
         print('\tAdding taxonmic metadata to database....  [DONE]')
-        print('\tFinishing compliation of a local silva database....', end='\r')
+        print('\tFinishing compilation of a local silva database....', end='\r')
         if embl_file:
             self.add_embl(embl_file)
             if self.db.table_exists('taxmap'):
                 self.db.copycol_bypk('taxmap','embl','accession','ncbi_taxid')
-                self.db.drop_table('embl')
                 self.db.copycol_bypk('taxmap','seqs','accession','seq')
+                self.db.drop_table('embl')
                 self.db.drop_table('seqs')
-        print('\tFinishing compliation of local silva database....  [DONE]')
-        print("Compliation Complete")
+        print('\tFinishing compilation of local silva database....  [DONE]')
+        print("Compilation Complete")
 
     #this funciton will add our fasta data into the sql database
     #700000 sequences at a time (as to not overflow RAM)
@@ -292,7 +395,7 @@ class silva_db():
     
     def add_tax(self,tax_file):
         self.db.drop_table('tax')
-        self.db.create_table('tax',columns=self.tax_columns,primary_key=['taxid'])
+        self.db.create_table('tax',columns=self.tax_columns,primary_key=['path','taxid'])
         tax_cols=[el[0] for el in self.tax_columns]
         to_db=[]
         f = open(tax_file,'r')
@@ -300,6 +403,11 @@ class silva_db():
             dat = line.strip().split('\t')
             if len(dat) == 3:
                 dat.extend(['',''])
+            try:
+                dat.append(dat[0].split(';')[-2].upper())#adding to the search column
+            except IndexError:
+                print(dat)
+                raise
             to_db.append(dat)
         f.close()
         self.db.insert_rows('tax',tax_cols,to_db)
@@ -320,7 +428,7 @@ class silva_db():
             accession = '.'.join(line[0:3])
             to_db.append([accession]+line[3:])
         self.db.insert_rows('embl',embl_cols,to_db)
-
+    '''
     def get_organism_byname(self,name):
         name=name.lower()
         dat=self.db.get_columns(table_name='taxmap',
@@ -340,23 +448,12 @@ class silva_db():
         else:
             print('Sorry, no matches\n')
         return(found)
-
-    def get_taxon_byname(self,name):
-        name=name.lower()
-        dat=self.db.get_columns(table_name='tax',columns=['path','taxid','rank'])
-        found = list()
-        for row in dat:
-            if name in row['path'].split(';')[-2].lower():
-                found.append(row)
-        if found:
-            print('Matches:')
-            for row in found:
-                
-                print('\n\tTaxon:  {}\n\ttaxid:  {}\
-                    \n\trank:   {}'.format(row['path'],row['taxid'],row['rank']))
-        else:
-            print('Sorry, no matches\n')
-        return(found)        
+    '''
+    def find_taxon(self,name):
+        name=name.upper()
+        dat=self.db.get_rows_bycolvalue(table_name='tax',valuecolumn='search',
+                                        values=name,columns=['path','taxid','rank','search'])
+        return(dat)        
 
     #this will use the tree of life to get all descendant taxids
     def _recursive_descendant_taxids(self,taxid):
@@ -374,18 +471,21 @@ class silva_db():
         taxids.append(taxid)
         return(taxids)
 
-    def get_accessions(self,taxid):
-        accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='taxid',
-                                        values=taxid,columns='accession')
-        return([el['accession'] for el in accessions])
+    def tax_lookup(self,valuecolumn,values,retrieve=None):
+        if retrieve==None:
+            retrieve = [el[0] for el in self.tax_columns]
 
-    def get_accession_dat(self,accession,get_columns=None):
-        if get_columns==None:
-            get_columns = [el[0] for el in self.taxmap_columns]
+        dat=self.db.get_rows_bycolvalue(table_name='tax',valuecolumn=valuecolumn,
+                                        values=values,columns=retrieve)
+        return(dat)
 
-        accessions=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn='accession',
-                                        values=accession,columns=get_columns)
-        return(accessions)
+    def taxmap_lookup(self,valuecolumn,values,retrieve=None):
+        if retrieve==None:
+            retrieve = [el[0] for el in self.taxmap_columns]
+
+        dat=self.db.get_rows_bycolvalue(table_name='taxmap',valuecolumn=valuecolumn,
+                                        values=values,columns=retrieve)
+        return(dat)
 
     def write_fasta(self,accessions,fasta_file,include_taxid=False,include_path=False,
                    include_organism_name=False,include_NCBItaxid=False):
@@ -400,7 +500,7 @@ class silva_db():
         if include_NCBItaxid:
             taxmap_metadata.append('ncbi_taxid')
         cols.extend(taxmap_metadata)
-        dat = self.get_accession_dat(accessions,get_columns=cols)
+        dat = self.taxmap_lookup('accessions',accessions)
         with open(fasta_file,'w') as f:
             for row in dat:
                 header=['>'+row['accession']]
