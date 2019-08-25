@@ -57,6 +57,27 @@ class InputError(Error):
 #add except EOFError to downloads to retry failed downloads
 
 class silva_manager:
+    '''
+    Manager class used to search and retrieve Silva sequences
+
+    The Silva manager class is used by the PNA_Designer to retrieve sequences
+    under a specific taxonomic unit, however, users can access the silva_manager API
+    for their own uses.
+    
+    Parameters
+    ----------
+        location: str
+            Directory location for local database copy
+        dataset : str
+            Avalible options are **parc** (all sequences),
+            **ref** (high quality sequences), or **nr** (non-redundant, clustered 
+            99% identity criterion). Defaults to **nr**
+        subunit: tuple of ints, optional
+            Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
+
+    
+    '''
+
     def __init__(self,location=str(),dataset='ref', subunit='small'):
 
         #Establishing the path for database files

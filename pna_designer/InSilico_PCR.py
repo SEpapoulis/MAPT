@@ -5,6 +5,11 @@ nt_complement={
         'W':'W','K':'M','M':'K','B':'V',
         'V':'B','D':'H','H':'D'}
 
+def reverse(DNA):
+    DNA=DNA.upper()
+    complement = [nt_complement[nt] for nt in DNA]
+    return(''.join(complement))
+    
 def reverse_complement(DNA):
     DNA=DNA.upper()
     complement = [nt_complement[nt] for nt in DNA]
@@ -17,11 +22,11 @@ def get_primerSS(primer):
     Pset=['']
     for char in primer:
         if char in amb: #for each sequence in Fset, duplicate and add each possilbe amb to child
-            add1,add2 = amb[char]
+            nts = amb[char]
             _temp=[]
             for seq in Pset:
-                _temp.append(seq+add1)
-                _temp.append(seq+add2)
+                for nt in nts:
+                    _temp.append(seq+nt)
             Pset=_temp
         else:
             for i in range(0,len(Pset)):

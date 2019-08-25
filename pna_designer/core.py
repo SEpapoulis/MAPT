@@ -6,7 +6,8 @@ from collections import defaultdict
 
     
 class k_mapper:
-    '''Simple class for generating and mapping k-mers
+    '''
+    Simple class for generating and mapping k-mers
 
     Nucleotide sequences can be sampled to find subsequences of 
     k length, otherwise refered to as k-mers. k-mers are generated from 
@@ -31,8 +32,9 @@ class k_mapper:
             k-mer mapping result, number of times a k-mer mapped to a specific index in the target sequence
         target_match_unique : list of ints
             k-mer mapping result, number of times a unique k-mer mapped to a specific index in the target sequence
-
+    
     '''
+
     def __init__(self,target_sequence,sequences=list(),krange=tuple([9,14])):
         #Inclusive range
         self.krng=list((range(krange[0],krange[1]+1)))
@@ -68,13 +70,16 @@ class k_mapper:
         return(kmer_location)
 
     def add_sequence(self,sequence):
-        '''Add a sequence that will be used to generate k-mers
+        '''
+        Add a sequence that will be used to generate k-mers
 
         Parameters
         ----------
             sequence: str
                 Nuclotide sequence
+
         '''
+
         seq=sequence.upper()
         for i in range(0,len(seq)):
             for k in self.krng:
@@ -94,7 +99,8 @@ class k_mapper:
                         self.target_match[i]+=self._kdict[kmer]
 
     def write_results(self,file_name):
-        '''Generate mapping file
+        '''
+        Generate mapping file
 
         A spreadsheet will be generated showing the unquie and
         absolute kmer mappings to the target sequence. The number
@@ -109,9 +115,9 @@ class k_mapper:
         ----------
             file_name: str
                 Mapping file name
-
         
         '''
+
         with open(file_name,'w') as o:
             o.write('Nuclotide,index,unique match,absolute match')
             for i in range(0,len(self.target_match)):
@@ -119,6 +125,13 @@ class k_mapper:
                 o.write(','.join([self.target[i],str(i),
                 str(self.target_match_unique[i]),str(self.target_match[i])]))
                 
+def map_PNA(target,PNA,krange=(9,13)):
+    PNAr = InSilico_PCR.reverse(PNA)
+    PNA_map = k_mapper(target)
+    PNA_map.add_sequence(PNA)
+    PNA_map.add_sequence(PNAr)
+    PNA_map.map_kmers()
+    return(PNA_map.target_match)
 
 class InputError(Exception):
     """Raised when user input arguments are incorrect"""
@@ -129,7 +142,8 @@ def _XOR(a,b):
     return(bool(a) != bool(b))
 
 class PNA_Designer:
-    '''A tool used to streamline the design of PNA oligos used for blocking
+    '''
+    A tool used to streamline the design of PNA oligos used for blocking
     amplificaiton of specific DNAs during PCR amplificaiton 
     
     PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunatly,
@@ -172,14 +186,14 @@ class PNA_Designer:
             Local directory of silva database if "target_silva_accession" or 
             "sequence_silva_taxid" is specified. Defualt locaiton is "~/.pna_designer"
         
-
-
     Attributes
     ----------
         failed_amplification : list of str
             If primers are specified, accession's of sequences that do not have an exact match
             to the primers will be recorded
+
     '''
+
     def __init__(self,result_file=str(),target_silva_accession=str(),target_fastafile=str(),
     sequence_file=str(),sequence_silva_path=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
     silva_dataset='ref',subunit='small',database_dir=str()):
@@ -208,7 +222,7 @@ class PNA_Designer:
         
         #getting the target sequence
         if target_fastafile:
-            for i,line in enumerate(self.iter_fasta(target_fastafile)):
+            for i,line in enumerate(self._iter_fasta(target_fastafile)):
                 self.target = line
                 if i > 0:
                     raise InputError("You can only design a PNA for a single sequence or consensus sequence")
@@ -228,9 +242,9 @@ class PNA_Designer:
         
         #Lets starting adding sequences to make our PNA
         if sequence_silva_path:
-            sequence_iterator = self.iter_silvatax(sequence_silva_path)
+            sequence_iterator = self._iter_silvatax(sequence_silva_path)
         else:
-            sequence_iterator = self.iter_fasta(sequence_file)
+            sequence_iterator = self._iter_fasta(sequence_file)
         
         #if amplifying targets 
         if self.primer_F and self.primer_R:
@@ -254,13 +268,13 @@ class PNA_Designer:
         print("Mapping Complete")
         self.pna.write_results(result_file)
 
-    def iter_silvatax(self,parent_taxpath):
+    def _iter_silvatax(self,parent_taxpath):
         accessions = self.silva.get_accessions(parent_taxpath)
         dat = self.silva.get_seqs(accessions)
         for row in dat:
             yield tuple(row)
 
-    def iter_fasta(self,file):
+    def _iter_fasta(self,file):
         f=open(file,'r')
         seq=''
         key=''
