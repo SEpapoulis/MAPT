@@ -66,14 +66,14 @@ class silva_manager:
     
     Parameters
     ----------
-        location: str
-            Directory location for local database copy
-        dataset : str
-            Avalible options are **parc** (all sequences),
-            **ref** (high quality sequences), or **nr** (non-redundant, clustered 
-            99% identity criterion). Defaults to **nr**
-        subunit: tuple of ints, optional
-            Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
+    location: str
+        Directory location for local database copy. Defualt locaiton is “~/.pna_designer”
+    dataset : str
+        Avalible options are **parc** (all sequences),
+        **ref** (high quality sequences), or **nr** (non-redundant, clustered 
+        99% identity criterion). Defaults to **nr**
+    subunit: tuple of ints, optional
+        Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
 
     
     '''
@@ -202,14 +202,15 @@ class silva_manager:
 
         Parameters
         ----------
-            taxon_name: str
-                name of taxon to be searched. Case insensitive
-            print_results: bool
-                All entries found will be printed with additional metadata. Default True.
+        taxon_name: str
+            name of taxon to be searched. Case insensitive
+        print_results: bool
+            All entries found will be printed with additional metadata. Default True.
+
         Returns
-        ----------
-        taxpaths : list of found taxpaths
-            path of taxonomic units found
+        -------
+        taxpaths
+            list of found taxpaths
         '''
         dat = self.db.tax_lookup('search',taxon_name.upper())
         taxpaths = [el['path'] for el in dat]
@@ -231,14 +232,15 @@ class silva_manager:
 
         Parameters
         ----------
-            name: str
-                name of the organism. Case sensitive. 
-            print_results: bool
-                All entries found will be printed with additional metadata. Default True.
+        name: str
+            name of the organism. Case sensitive. 
+        print_results: bool
+            All entries found will be printed with additional metadata. Default True.
+
         Returns
-        ----------
-        accessions : list of silva accessions 
-            Accessions listed with the organism named searched
+        -------
+        accessions
+            List of silva accessions 
         '''
         dat = self.db.taxmap_lookup('organism_name',name,['organism_name','accession','path'])
         accessions = [el['accession'] for el in dat]
@@ -259,14 +261,14 @@ class silva_manager:
 
         Parameters
         ----------
-            taxpath: str
-                Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
-                Use find_taxpath() to search the database for a specific taxpath, or use the silva website
+        taxpath: str
+            Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
+            Use find_taxpath() to search the database for a specific taxpath, or use the silva website
 
         Returns
-        ----------
-        assoicated sequences : list of silva accessions
-            a list of associated sequences under this taxon
+        -------
+        accessions
+            List of silva accessions under the given taxonomic path
         '''
         taxid = self.db.tax_lookup('path',taxpath,retrieve=['taxid'])
         if taxid:
@@ -276,23 +278,22 @@ class silva_manager:
         return(list())
     
     def get_seqs(self,accessions):
-        '''Retrieve silva accessions under a specific taxonomic unit
+        '''Retrieve sequences from input accessions
 
-        For a given silva taxonomic path, all accessions under this taxon will be retrieved.
+        For a given list of accessions, retrieve documented sequences
 
         Parameters
         ----------
-            taxpath: str
-                Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
-                Use find_taxpath() to search the database for a specific taxpath, or use the silva website
+        accessions: list of accessions
+            list of accessions used for sequence retrieval
 
         Returns
-        ----------
-        assoicated sequences : list of silva accessions
-            a list of associated sequences under this taxon
+        -------
+        Sequence list
+            A list of tuples(accession,sequence)
         '''
         dat = self.db.taxmap_lookup('accession',accessions,retrieve=['accession','seq'])
-        return([[el['accession'],el['seq']] for el in dat])
+        return([tuple([el['accession'],el['seq']]) for el in dat])
 
 
 #TODO: 

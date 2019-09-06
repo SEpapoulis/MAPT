@@ -1,0 +1,343 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Welcome to pna_designer’s documentation! &#8212; pna_designer  documentation</title>
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="#">pna_designer  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="welcome-to-pna-designer-s-documentation">
+<h1>Welcome to pna_designer’s documentation!<a class="headerlink" href="#welcome-to-pna-designer-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Something general about the PNA</p>
+<div class="section" id="design-a-pna">
+<h2>Design a PNA<a class="headerlink" href="#design-a-pna" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pna_designer.core.PNA_Designer">
+<em class="property">class </em><code class="descclassname">pna_designer.core.</code><code class="descname">PNA_Designer</code><span class="sig-paren">(</span><em>result_file=''</em>, <em>target_silva_accession=''</em>, <em>target_fastafile=''</em>, <em>sequence_file=''</em>, <em>sequence_silva_path=0</em>, <em>primer_F=''</em>, <em>primer_R=''</em>, <em>kmer_range=(9</em>, <em>14)</em>, <em>silva_dataset='ref'</em>, <em>subunit='small'</em>, <em>database_dir=''</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.core.PNA_Designer" title="Permalink to this definition">¶</a></dt>
+<dd><p>A tool used to streamline the design of PNA oligos used for blocking
+amplificaiton of specific DNAs during PCR amplificaiton</p>
+<p>PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunatly,
+no single PNA is universal in blocking DNA, thus, each requires testing in order to determine
+the sequence space being blocked during amplificaiton. This tool automates inital <em>in silico</em>
+analysis required for development of a new PNA. To complement automatic analysis, this tool
+also makes data access more convient by utilizing RNA sequence data avalible
+at the <a class="reference external" href="https://www.arb-silva.de/">Silva database</a>. Silva identifiers can be used to
+specify either the PNA target sequence or sequences concidered in the analysis. A copy of silva
+datasets will be download and then compiled.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>results_file</strong> (<em>str</em>) – The name of the output file</li>
+<li><strong>target_silva_accession</strong> (<em>str, optional</em>) – Silva accession of PNA target. Required if “target_fastafile” is not provided.</li>
+<li><strong>target_fastafile</strong> (<em>str, optional</em>) – Fasta file with PNA target. File should only have PNA target sequence. Required if
+“target_silva_accession” is not provided.</li>
+<li><strong>sequence_file</strong> (<em>str, optional</em>) – Fasta file used to desgin the PNA. Required if “sequence_silva_taxid” not provided.</li>
+<li><strong>sequence_silva_taxid</strong> (<em>int, optional</em>) – Silva taxid used to desgin the PNA. Required if “sequence_silva_taxid” not provided.</li>
+<li><strong>primer_F</strong> (<em>str, optional</em>) – Forward primer used for the in silico amplification. If not specified, the full sequence
+of the PNA target and sequences for PNA design will be used.</li>
+<li><strong>primer_R</strong> (<em>str, optional</em>) – Reverse primer used for the in silico amplification. If not specified, the full sequence
+of the PNA target and sequences for PNA design will be used.</li>
+<li><strong>kmer_range</strong> (<em>tupple, optional</em>) – Kmer range used in PNA design. Defaults range: 9-14</li>
+<li><strong>silva_dataset</strong> (<em>str, optional</em>) – Silva Database used to fetch seqeucnes. Avalible options are <strong>parc</strong> (all sequences),
+<strong>ref</strong> (high quality sequences), or <strong>nr</strong> (non-redundant, clustered
+99% identity criterion). Defaults to <strong>nr</strong></li>
+<li><strong>subunit</strong> (<em>str, optional</em>) – Specify <strong>large</strong> or <strong>small</strong> ribosomal subunit in silva database. Defaults to <strong>small</strong></li>
+<li><strong>database_dir</strong> (<em>str, optional</em>) – Local directory of silva database if “target_silva_accession” or
+“sequence_silva_taxid” is specified. Defualt locaiton is “~/.pna_designer”</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><p class="first last"><strong>failed_amplification</strong> (<em>list of str</em>) – If primers are specified, accession’s of sequences that do not have an exact match
+to the primers will be recorded</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="mapping-k-mers">
+<h2>Mapping k-mers<a class="headerlink" href="#mapping-k-mers" title="Permalink to this headline">¶</a></h2>
+<p>To increase the tractibility offered to researchers, we have made the k_mapper datatype
+avalible for users.</p>
+<div class="section" id="k-mapper">
+<h3>k_mapper<a class="headerlink" href="#k-mapper" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="pna_designer.core.k_mapper">
+<em class="property">class </em><code class="descclassname">pna_designer.core.</code><code class="descname">k_mapper</code><span class="sig-paren">(</span><em>target_sequence</em>, <em>sequences=[]</em>, <em>krange=(9</em>, <em>14)</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.core.k_mapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple class for generating and mapping k-mers</p>
+<p>Nucleotide sequences can be sampled to find subsequences of
+k length, otherwise refered to as k-mers. k-mers are generated from
+a group of sequences and subsequently mapped to a target sequence.
+Degeneracy/ambiguity in sequences are supported, however, poor quality
+sequences with too many ambiguous nuclotides will inflate mapping results.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>target_sequence</strong> (<em>str</em>) – Nuclotide sequence that k-mers will be mapped to.</li>
+<li><strong>sequences</strong> (<em>list of str</em>) – Nuclotide sequences that k-mers will be generated from.</li>
+<li><strong>krange</strong> (<em>tuple of ints, optional</em>) – Size range of k-mers to be generated. Inclusive. Default: (9,14)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>target</strong> (<em>str</em>) – Where k-mers are being mapped</li>
+<li><strong>target_match</strong> (<em>list of ints</em>) – k-mer mapping result, number of times a k-mer mapped to a specific index in the target sequence</li>
+<li><strong>target_match_unique</strong> (<em>list of ints</em>) – k-mer mapping result, number of times a unique k-mer mapped to a specific index in the target sequence</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pna_designer.core.k_mapper.add_sequence">
+<code class="descname">add_sequence</code><span class="sig-paren">(</span><em>sequence</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.core.k_mapper.add_sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a sequence that will be used to generate k-mers</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sequence</strong> (<em>str</em>) – Nuclotide sequence</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pna_designer.core.k_mapper.map_kmers">
+<code class="descname">map_kmers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.core.k_mapper.map_kmers" title="Permalink to this definition">¶</a></dt>
+<dd><p>map kmers to target sequence</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pna_designer.core.k_mapper.write_results">
+<code class="descname">write_results</code><span class="sig-paren">(</span><em>file_name</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.core.k_mapper.write_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate mapping file</p>
+<p>A spreadsheet will be generated showing the unquie and
+absolute kmer mappings to the target sequence. The number
+of absolute mappings is relative to the number of sequences
+used to generate kmers, thus, absolute mapping will change with
+the size of the dataset. Columns are the nuclotide of the target,
+index of target sequence, number of unquie k-mer matches, and
+the number of k-mer absolute matches</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file_name</strong> (<em>str</em>) – Mapping file name</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="managing-sequence-data-from-silva">
+<h2>Managing Sequence Data from Silva<a class="headerlink" href="#managing-sequence-data-from-silva" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pna_designer.database.silva.silva_manager">
+<em class="property">class </em><code class="descclassname">pna_designer.database.silva.</code><code class="descname">silva_manager</code><span class="sig-paren">(</span><em>location=''</em>, <em>dataset='ref'</em>, <em>subunit='small'</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.database.silva.silva_manager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Manager class used to search and retrieve Silva sequences</p>
+<p>The Silva manager class is used by the PNA_Designer to retrieve sequences
+under a specific taxonomic unit, however, users can access the silva_manager API
+for their own uses.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>location</strong> (<em>str</em>) – Directory location for local database copy. Defualt locaiton is “~/.pna_designer”</li>
+<li><strong>dataset</strong> (<em>str</em>) – Avalible options are <strong>parc</strong> (all sequences),
+<strong>ref</strong> (high quality sequences), or <strong>nr</strong> (non-redundant, clustered
+99% identity criterion). Defaults to <strong>nr</strong></li>
+<li><strong>subunit</strong> (<em>tuple of ints, optional</em>) – Specify <strong>large</strong> or <strong>small</strong> ribosomal subunit in silva database. Defaults to <strong>small</strong></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pna_designer.database.silva.silva_manager.find_organism">
+<code class="descname">find_organism</code><span class="sig-paren">(</span><em>name</em>, <em>print_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.database.silva.silva_manager.find_organism" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for an organism in the Silva database</p>
+<p>You can directly search for a organism by the name. Be aware that only eact matches to the organism name will be shown.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>str</em>) – name of the organism. Case sensitive.</li>
+<li><strong>print_results</strong> (<em>bool</em>) – All entries found will be printed with additional metadata. Default True.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><em>accessions</em> – List of silva accessions</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pna_designer.database.silva.silva_manager.find_taxpath">
+<code class="descname">find_taxpath</code><span class="sig-paren">(</span><em>taxon_name</em>, <em>print_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.database.silva.silva_manager.find_taxpath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for taxonomic unit in Silva database</p>
+<p>Finds information on the given taxonomic name provided. Spelling must be exact to taxonomic name
+to find results.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>taxon_name</strong> (<em>str</em>) – name of taxon to be searched. Case insensitive</li>
+<li><strong>print_results</strong> (<em>bool</em>) – All entries found will be printed with additional metadata. Default True.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><em>taxpaths</em> – list of found taxpaths</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pna_designer.database.silva.silva_manager.get_accessions">
+<code class="descname">get_accessions</code><span class="sig-paren">(</span><em>taxpath</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.database.silva.silva_manager.get_accessions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve silva accessions under a specific taxonomic unit</p>
+<p>For a given silva taxonomic path, all accessions under this taxon will be retrieved.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>taxpath</strong> (<em>str</em>) – Desired Silva taxpath. For example, Fungi would be: “Eukaryota;Opisthokonta;Nucletmycea;Fungi;”.
+Use find_taxpath() to search the database for a specific taxpath, or use the silva website</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><em>accessions</em> – List of silva accessions under the given taxonomic path</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pna_designer.database.silva.silva_manager.get_seqs">
+<code class="descname">get_seqs</code><span class="sig-paren">(</span><em>accessions</em><span class="sig-paren">)</span><a class="headerlink" href="#pna_designer.database.silva.silva_manager.get_seqs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve sequences from input accessions</p>
+<p>For a given list of accessions, retrieve documented sequences</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>accessions</strong> (<em>list of accessions</em>) – list of accessions used for sequence retrieval</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><em>Sequence list</em> – A list of tuples(accession,sequence)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+</div>
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Welcome to pna_designer’s documentation!</a><ul>
+<li><a class="reference internal" href="#design-a-pna">Design a PNA</a></li>
+<li><a class="reference internal" href="#mapping-k-mers">Mapping k-mers</a><ul>
+<li><a class="reference internal" href="#k-mapper">k_mapper</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#managing-sequence-data-from-silva">Managing Sequence Data from Silva</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="#">pna_designer  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Spiridon Evangelos Papoulis.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

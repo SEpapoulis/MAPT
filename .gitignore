@@ -2,5 +2,9 @@
 pna_designer/__pycache__/
 pna_designer/sql/__pycache__/
 *.pyc
-docs/
-Moccia_PNA/
+*.fasta
+*.tgz
+*.zip
+*.db
+*.tre
+

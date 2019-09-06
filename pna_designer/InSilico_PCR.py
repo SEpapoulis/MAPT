@@ -5,7 +5,7 @@ nt_complement={
         'W':'W','K':'M','M':'K','B':'V',
         'V':'B','D':'H','H':'D'}
 
-def reverse(DNA):
+def complement(DNA):
     DNA=DNA.upper()
     complement = [nt_complement[nt] for nt in DNA]
     return(''.join(complement))

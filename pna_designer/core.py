@@ -17,22 +17,22 @@ class k_mapper:
     
     Parameters
     ----------
-        target_sequence: str
-            Nuclotide sequence that k-mers will be mapped to.
-        sequences : list of str
-            Nuclotide sequences that k-mers will be generated from.
-        krange: tuple of ints, optional
-            Size range of k-mers to be generated. Inclusive. Default: (9,14)
+    target_sequence: str
+        Nuclotide sequence that k-mers will be mapped to.
+    sequences : list of str
+        Nuclotide sequences that k-mers will be generated from.
+    krange: tuple of ints, optional
+        Size range of k-mers to be generated. Inclusive. Default: (9,14)
 
     Attributes
     ----------
-        target : str
-            Where k-mers are being mapped
-        target_match : list of ints
-            k-mer mapping result, number of times a k-mer mapped to a specific index in the target sequence
-        target_match_unique : list of ints
-            k-mer mapping result, number of times a unique k-mer mapped to a specific index in the target sequence
-    
+    target : str
+        Where k-mers are being mapped
+    target_match : list of ints
+        k-mer mapping result, number of times a k-mer mapped to a specific index in the target sequence
+    target_match_unique : list of ints
+        k-mer mapping result, number of times a unique k-mer mapped to a specific index in the target sequence
+
     '''
 
     def __init__(self,target_sequence,sequences=list(),krange=tuple([9,14])):
@@ -64,7 +64,13 @@ class k_mapper:
                 stop =i 
                 kmer = self.target[start:stop]
                 if kmer in kmer_location:
-                    kmer_location[kmer].append((start,stop))
+                    kmer_location[kmer].append(range(start,stop))
+                else:
+                    kmer_location[kmer] = [range(start,stop)]
+                #reverse complement
+                kmer=InSilico_PCR.reverse_complement(kmer)
+                if kmer in kmer_location:
+                    kmer_location[kmer].append(range(start,stop))
                 else:
                     kmer_location[kmer] = [range(start,stop)]
         return(kmer_location)
@@ -84,7 +90,9 @@ class k_mapper:
         for i in range(0,len(seq)):
             for k in self.krng:
                 if i+k <len(seq):
-                    self._kdict[seq[i:i+k]]+=1        
+                    self._kdict[seq[i:i+k]]+=1
+                    #reverse complement
+                    self._kdict[InSilico_PCR.reverse_complement(seq[i:i+k])]+=1    
 
     def map_kmers(self):
         '''map kmers to target sequence
@@ -93,6 +101,7 @@ class k_mapper:
             if kmer in self._target_klocation:
                 locations = self._target_klocation[kmer]
                 for location in locations:
+                    #change range to list to indicies to add
                     loc = list(location)
                     for i in loc:
                         self.target_match_unique[i]+=1
@@ -113,8 +122,8 @@ class k_mapper:
 
         Parameters
         ----------
-            file_name: str
-                Mapping file name
+        file_name: str
+            Mapping file name
         
         '''
 
@@ -125,11 +134,31 @@ class k_mapper:
                 o.write(','.join([self.target[i],str(i),
                 str(self.target_match_unique[i]),str(self.target_match[i])]))
                 
-def map_PNA(target,PNA,krange=(9,13)):
-    PNAr = InSilico_PCR.reverse(PNA)
+def map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
+    '''
+    Align a PNA to a given target sequence
+
+    map_PNA will use the k_mapper class to generate k-mer alignments to target DNA. PNA oligomers
+    can bind to DNA in either orientation, thus, the reverse of the PNA is also searched for alignments
+
+    Parameters
+    ----------
+    target : str
+        DNA sequence the PNA will be aligned to
+    PNA : str
+        PNA sequence
+    krange : tuple, optional
+        the k-mer range used for alignemnt. Defaults to 9-13 (inclusive)
+    antiparallel_only : bool, optional
+        Specifies if only the antiparallel orientation should be concidered in alignment. Defaults to False
+
+
+    '''
     PNA_map = k_mapper(target)
     PNA_map.add_sequence(PNA)
-    PNA_map.add_sequence(PNAr)
+    if not antiparallel_only:
+        PNAr = PNA[::-1]
+        PNA_map.add_sequence(PNAr)
     PNA_map.map_kmers()
     return(PNA_map.target_match)
 
@@ -157,40 +186,40 @@ class PNA_Designer:
 
     Parameters
     ----------
-        results_file: str
-            The name of the output file
-        target_silva_accession : str, optional
-            Silva accession of PNA target. Required if "target_fastafile" is not provided.
-        target_fastafile: str, optional
-            Fasta file with PNA target. File should only have PNA target sequence. Required if
-            "target_silva_accession" is not provided.
-        sequence_file: str, optional
-            Fasta file used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
-        sequence_silva_taxid: int, optional
-            Silva taxid used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
-        primer_F: str, optional
-            Forward primer used for the in silico amplification. If not specified, the full sequence
-            of the PNA target and sequences for PNA design will be used. 
-        primer_R: str, optional
-            Reverse primer used for the in silico amplification. If not specified, the full sequence
-            of the PNA target and sequences for PNA design will be used. 
-        kmer_range: tupple, optional
-            Kmer range used in PNA design. Defaults range: 9-14
-        silva_dataset: str, optional
-            Silva Database used to fetch seqeucnes. Avalible options are **parc** (all sequences),
-            **ref** (high quality sequences), or **nr** (non-redundant, clustered 
-            99% identity criterion). Defaults to **nr**
-        subunit: str, optional
-            Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
-        database_dir: str, optional
-            Local directory of silva database if "target_silva_accession" or 
-            "sequence_silva_taxid" is specified. Defualt locaiton is "~/.pna_designer"
+    results_file: str
+        The name of the output file
+    target_silva_accession : str, optional
+        Silva accession of PNA target. Required if "target_fastafile" is not provided.
+    target_fastafile: str, optional
+        Fasta file with PNA target. File should only have PNA target sequence. Required if
+        "target_silva_accession" is not provided.
+    sequence_file: str, optional
+        Fasta file used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
+    sequence_silva_taxid: int, optional
+        Silva taxid used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
+    primer_F: str, optional
+        Forward primer used for the in silico amplification. If not specified, the full sequence
+        of the PNA target and sequences for PNA design will be used. 
+    primer_R: str, optional
+        Reverse primer used for the in silico amplification. If not specified, the full sequence
+        of the PNA target and sequences for PNA design will be used. 
+    kmer_range: tupple, optional
+        Kmer range used in PNA design. Defaults range: 9-14
+    silva_dataset: str, optional
+        Silva Database used to fetch seqeucnes. Avalible options are **parc** (all sequences),
+        **ref** (high quality sequences), or **nr** (non-redundant, clustered 
+        99% identity criterion). Defaults to **nr**
+    subunit: str, optional
+        Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
+    database_dir: str, optional
+        Local directory of silva database if "target_silva_accession" or 
+        "sequence_silva_taxid" is specified. Defualt locaiton is "~/.pna_designer"
         
     Attributes
     ----------
-        failed_amplification : list of str
-            If primers are specified, accession's of sequences that do not have an exact match
-            to the primers will be recorded
+    failed_amplification : list of str
+        If primers are specified, accession's of sequences that do not have an exact match
+        to the primers will be recorded
 
     '''
 
