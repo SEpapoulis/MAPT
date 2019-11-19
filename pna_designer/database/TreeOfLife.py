@@ -44,6 +44,7 @@ def add_node(taxid_node,taxid,children,parent_node):
             add_node(taxid_node,childtax,split_newick(cnode),current_node)
         else:
             child_node = Node(childtax)
+            child_node.set_parent(current_node)
             taxid_node[childtax] = child_node
             current_node.add_child(child_node)
 
