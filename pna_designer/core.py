@@ -3,7 +3,7 @@ from . import InSilico_PCR
 from .database.silva import silva_manager
 from collections import defaultdict
 
-
+#Microbiome Amplification Preference Tool (MAPT)
     
 class k_mapper:
     '''
@@ -13,14 +13,14 @@ class k_mapper:
     k length, otherwise refered to as k-mers. k-mers are generated from 
     a group of sequences and subsequently mapped to a target sequence. 
     Degeneracy/ambiguity in sequences are supported, however, poor quality
-    sequences with too many ambiguous nuclotides will inflate mapping results.
+    sequences with too many ambiguous nucleotides will inflate mapping results.
     
     Parameters
     ----------
     target_sequence: str
-        Nuclotide sequence that k-mers will be mapped to.
+        Nucleotide sequence that k-mers will be mapped to.
     sequences : list of str
-        Nuclotide sequences that k-mers will be generated from.
+        Nucleotide sequences that k-mers will be generated from.
     krange: tuple of ints, optional
         Size range of k-mers to be generated. Inclusive. Default: (9,14)
 
@@ -82,7 +82,7 @@ class k_mapper:
         Parameters
         ----------
             sequence: str
-                Nuclotide sequence
+                Nucleotide sequence
 
         '''
 
@@ -107,6 +107,16 @@ class k_mapper:
                         self.target_match_unique[i]+=1
                         self.target_match[i]+=self._kdict[kmer]
 
+    def get_results(self):
+        '''returns a dictionary with mapping results'''
+        dat = {'Nucleotide':[],'index':[],'unique match':[],'absolute match':[]}
+        for i in range(0,len(self.target_match)):
+            dat['Nucleotide'].append(self.target[i])
+            dat['index'].append(i)
+            dat['unique match'].append(self.target_match_unique[i])
+            dat['absolute match'].append(self.target_match[i])
+        return(dat)
+
     def write_results(self,file_name):
         '''
         Generate mapping file
@@ -115,7 +125,7 @@ class k_mapper:
         absolute kmer mappings to the target sequence. The number
         of absolute mappings is relative to the number of sequences
         used to generate kmers, thus, absolute mapping will change with
-        the size of the dataset. Columns are the nuclotide of the target,
+        the size of the dataset. Columns are the nucleotide of the target,
         index of target sequence, number of unquie k-mer matches, and 
         the number of k-mer absolute matches
 
@@ -128,7 +138,7 @@ class k_mapper:
         '''
 
         with open(file_name,'w') as o:
-            o.write('Nuclotide,index,unique match,absolute match')
+            o.write('Nucleotide,index,unique match,absolute match')
             for i in range(0,len(self.target_match)):
                 o.write('\n')
                 o.write(','.join([self.target[i],str(i),
@@ -231,6 +241,7 @@ class PNA_Designer:
         self.primer_F = primer_F
         self.primer_R = primer_R
         self.failed_amplification=[]
+        self.krange = kmer_range
         
         #raise an error if the correct sequencing data was not provided
         #both or missing or both a provided throws an error
@@ -296,6 +307,7 @@ class PNA_Designer:
         self.pna.map_kmers()
         print("Mapping Complete")
         self.pna.write_results(result_file)
+        print("Results have been written to {}".format(result_file))
 
     def _iter_silvatax(self,parent_taxpath):
         accessions = self.silva.get_accessions(parent_taxpath)
@@ -320,4 +332,24 @@ class PNA_Designer:
         if key:#just incase file is empty
             yield ((key,seq))
         f.close()
+
+    def map_PNA(self,PNA,antiparallel_only=False):
+        '''
+        Align a PNA to a given target sequence
+
+        map_PNA will use the k_mapper class to generate k-mer alignments to target DNA. PNA oligomers
+        can bind to DNA in either orientation, thus, the reverse of the PNA is also searched for alignments
+
+        Parameters
+        ----------
+        PNA : str
+            PNA sequence
+        antiparallel_only : bool, optional
+            Specifies if only the antiparallel orientation should be concidered in alignment. Defaults to False
+
+        '''
         
+        dat=map_PNA(self.target[1],PNA,krange=self.krange,antiparallel_only=antiparallel_only)
+        results = self.pna.get_results()
+        results['PNA mapping']=dat
+        return(results)

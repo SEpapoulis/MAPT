@@ -31,6 +31,7 @@ from .parser import gzip_fasta,gzip_table
 from .TreeOfLife import load_ToL
 from . import ftp
 import os
+import gzip
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -74,11 +75,12 @@ class silva_manager:
         99% identity criterion). Defaults to **nr**
     subunit: tuple of ints, optional
         Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
-
+    release : int, optional
+        Specify a Silva release. Default = Current. Note that only release 132 or greater are avlible
     
     '''
 
-    def __init__(self,location=str(),dataset='ref', subunit='small'):
+    def __init__(self,location=str(),dataset='ref', subunit='small',release=int()):
 
         #Establishing the path for database files
         if location:
@@ -92,8 +94,9 @@ class silva_manager:
         #TODO: add the ability to fetch different versions
 
         #Generating the filenames for the database
+        self._meta_dat = {}
+        self._load_meta(release=str(release))
         self.__generate_filenames(dataset,subunit)
-        
         if os.path.exists(self.db_file):
             self.db = silva_db(self.db_file,self.tree_file)
         else:
@@ -101,29 +104,33 @@ class silva_manager:
             
 
     def __build_protocol(self):
-        host = 'ftp.arb-silva.de/current/Exports/'
+        if self._meta_dat['current'] == 'True':
+            host = 'ftp://ftp.arb-silva.de/current/Exports/'
+        else:
+            host = 'ftp://ftp.arb-silva.de/release_{}/Exports/'.format(self._meta_dat['release'])
         host_tax = host+'taxonomy/'
         if not os.path.exists(self.fasta_file):
-            self._fetch_file(host+os.path.basename(self.fasta_file))
+            self._fetch_file(('fasta',host+os.path.basename(self.fasta_file)))
         if not os.path.exists(self.taxmap_file):
-            self._fetch_file(host_tax+os.path.basename(self.taxmap_file))
+            self._fetch_file(('taxmap',host_tax+os.path.basename(self.taxmap_file)),False)
         if not os.path.exists(self.tax_file):
-            self._fetch_file(host_tax+os.path.basename(self.tax_file))
-        if not os.path.exists(self.embl_file):
-            self._fetch_file(host_tax+os.path.basename(self.embl_file))
+            self._fetch_file(('tax',host_tax+os.path.basename(self.tax_file)),False)
         if not os.path.exists(self.tree_file):
-            self._fetch_file(host_tax+os.path.basename(self.tree_file))
+            self._fetch_file(('tree',host_tax+os.path.basename(self.tree_file)),False)
 
-        self.db = silva_db(self.db_file,self.tree_file,self.fasta_file,self.taxmap_file,self.tax_file,self.embl_file)
+        self.db = silva_db(self.db_file,self.tree_file,self.fasta_file,self.taxmap_file,self.tax_file)
 
         #cleanup
         
         os.remove(self.fasta_file)
         os.remove(self.taxmap_file)
         os.remove(self.tax_file)
-        os.remove(self.embl_file)
+        #os.remove(self.embl_file)
 
     def __generate_filenames(self,dataset,subunit):
+        ''' This function is not compatible with version 132, 132 did not have tax or tree
+        files as gz files. for compatibility, please update
+        '''
         # * is wildcard for silva release number
         if subunit not in ('small','large'):
             raise ValueError("Invalid subunit, must be either small (16S,18S), or large (23S,28S)")
@@ -132,21 +139,18 @@ class silva_manager:
         if dataset == 'ref': 
             fasta_file = 'SILVA_*_SSURef_tax_silva.fasta.gz'
             taxmap_file = 'taxmap_slv_ssu_ref_*.txt.gz'
-            tax_file = 'tax_slv_ssu_*.txt'       
-            embl_file = 'taxmap_embl_ssu_ref_*.txt.gz'
-            tree_file = 'tax_slv_ssu_*.tre'
+            tax_file = 'tax_slv_ssu_*.txt.gz'       
+            tree_file = 'tax_slv_ssu_*.tre.gz'
         elif dataset == 'nr':
             fasta_file = 'SILVA_*_SSURef_Nr99_tax_silva.fasta.gz'
             taxmap_file = 'taxmap_slv_ssu_ref_nr_*.txt.gz'
-            tax_file = 'tax_slv_ssu_*.txt'
-            embl_file = 'taxmap_embl_ssu_ref_nr99_*.txt.gz'
-            tree_file = 'tax_slv_ssu_*.tre'
+            tax_file = 'tax_slv_ssu_*.txt.gz'
+            tree_file = 'tax_slv_ssu_*.tre.gz'
         elif dataset == 'parc':
             fasta_file = 'SILVA_*_SSUParc_tax_silva.fasta.gz'
             taxmap_file = 'taxmap_slv_ssu_parc_*.txt.gz'
-            tax_file = 'tax_slv_ssu_*.txt'
-            embl_file = 'taxmap_embl_ssu_parc_*.txt.gz'  
-            tree_file = 'tax_slv_ssu_*.tre'
+            tax_file = 'tax_slv_ssu_*.txt.gz'
+            tree_file = 'tax_slv_ssu_*.tre.gz'
         else:
             raise ValueError("Invalid dataset, choose one of the following: ref, nr, parc")             
         dbsu="ssu"
@@ -154,45 +158,57 @@ class silva_manager:
             fasta_file=fasta_file.replace('SSU','LSU')
             taxmap_file=taxmap_file.replace('ssu','lsu')
             tax_file=tax_file.replace('ssu','lsu')
-            embl_file=embl_file.replace('ssu','lsu')
             tree_file=tree_file.replace('ssu','lsu')
             dbsu="lsu"
 
-        self.version_file= os.path.join(self.location,'version')
-        self.__load_version()
+        ##self.version_file= os.path.join(self.location,'version')
+        r= self._meta_dat['release']
+        self.db_file = os.path.join(self.location,'silva{}_{}_{}.db'.format(r,dataset,dbsu))
+        self.fasta_file=os.path.join(self.location,fasta_file.replace('*',r))
+        self.taxmap_file=os.path.join(self.location,taxmap_file.replace('*',r))
+        self.tax_file=os.path.join(self.location,tax_file.replace('*',r))
+        self.tree_file=os.path.join(self.location,tree_file.replace('*',r))
 
-        self.db_file = os.path.join(self.location,'silva{}_{}_{}.db'.format(self.release,dataset,dbsu))
-        self.fasta_file=os.path.join(self.location,fasta_file.replace('*',self.release))
-        self.taxmap_file=os.path.join(self.location,taxmap_file.replace('*',self.release))
-        self.tax_file=os.path.join(self.location,tax_file.replace('*',self.release))
-        self.embl_file=os.path.join(self.location,embl_file.replace('*',self.release))
-        self.tree_file=os.path.join(self.location,tree_file.replace('*',self.release))
+        #posthoc changes for 132 compatibility
+        if r == '132':
+            self.tree_file = self.tree_file.replace('.gz','')
+            self.tax_file = self.tax_file.replace('.gz','')
 
     def _find_release(self):
-        #finding the current release
-        DE = ftp.Download_Engine('ftp.arb-silva.de')
-        file_list = DE.listdir('current/Exports/')
+        #finding the current release  
+        file_list = ftp.list_dir('ftp.arb-silva.de/current/Exports/')
         for f in file_list:
             if '_SSURef_tax_silva.fasta.gz' in f:
                 release = f.split('_')[1]
-                f = open(self.version_file,'w')
-                f.write(release+'\n')
-                f.close()
                 return(release)
+        raise FileNotFoundError('Coult not find release version in ftp.arb-silva.de/current/Exports/')
 
-    def _fetch_file(self,target_file):
-        DE = ftp.Download_Engine('ftp.arb-silva.de',destination = self.location)
-        DE.add_target(target_file)
-        DE.download()
+    def _fetch_file(self,target_file,print_progress=True):
+        DE = ftp.Download_Engine([target_file],destination = self.location)
+        DE.Download(print_progress)
 
-    def __load_version(self):
-        if os.path.exists(self.version_file):
-            f = open(self.version_file,'r')
-            self.release = f.readline().strip()
-            f.close()
+    def _write_meta(self,metafile):
+        with open(metafile,'w') as f:
+            for field in self._meta_dat:
+                f.write(','.join([str(field),str(self._meta_dat[field])])+'\n')
+
+    def _load_meta(self,release):
+        meta_file = os.path.join(self.location,'metadat_{}.csv'.format(release))
+        if os.path.exists(meta_file):
+            with open(meta_file,'r') as f:
+                for line in f:
+                    field,dat = line.strip().split(',')
+                    self._meta_dat[field]=dat
         else:
-            self.release = self._find_release()
+            current = self._find_release()
+            if release ==current or release == '0':# ==0 for default
+                self._meta_dat['release']=current
+                self._meta_dat['current']='True'
+            else:
+                self._meta_dat['release']=release
+                self._meta_dat['current']='False'
 
+            self._write_meta(meta_file)
 
     def find_taxpath(self,taxon_name,print_results=True):
         '''Search for taxonomic unit in Silva database
@@ -302,7 +318,7 @@ class silva_manager:
 
 class silva_db():
     def __init__(self,dbfile,tree_file=str(),fasta_file=str(),
-    taxmap_file=str(),tax_file=str(),embl_file=str()):
+    taxmap_file=str(),tax_file=str()):
 
         self.db = sqldb(dbfile)
 
@@ -320,7 +336,7 @@ class silva_db():
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
                                 ('taxid','INTEGER'),
-                                ('ncbi_taxid','INTEGER'),
+                                #('ncbi_taxid','INTEGER'), They broke the file >:(
                                 ('seq','TEXT'))
 
         #taxid primary key
@@ -333,7 +349,7 @@ class silva_db():
         if tree_file:
             self.ToL=load_ToL(tree_file)    
         if self._setup_required():
-            self._compile_database(fasta_file,taxmap_file,tax_file,embl_file)
+            self._compile_database(fasta_file,taxmap_file,tax_file)
 
         #used as a error check for inputs
         if self.db.table_exists('tax'):
@@ -343,7 +359,7 @@ class silva_db():
         
         return(not self.db.table_exists('taxmap'))
 
-    def _compile_database(self,fasta_file,taxmap_file,tax_file,embl_file):
+    def _compile_database(self,fasta_file,taxmap_file,tax_file):
         print("Compiling Silva database, this make take some time")
         if fasta_file:
             print('\tAdding sequences to database....', end='\r')
@@ -356,13 +372,8 @@ class silva_db():
             self.add_tax(tax_file)
         print('\tAdding taxonmic metadata to database....  [DONE]')
         print('\tFinishing compilation of a local silva database....', end='\r')
-        if embl_file:
-            self.add_embl(embl_file)
-            if self.db.table_exists('taxmap'):
-                self.db.copycol_bypk('taxmap','embl','accession','ncbi_taxid')
-                self.db.copycol_bypk('taxmap','seqs','accession','seq')
-                self.db.drop_table('embl')
-                self.db.drop_table('seqs')
+        self.db.copycol_bypk('taxmap','seqs','accession','seq')
+        self.db.drop_table('seqs')
         print('\tFinishing compilation of local silva database....  [DONE]')
         print("Compilation Complete")
 
@@ -420,9 +431,15 @@ class silva_db():
         self.db.create_table('tax',columns=self.tax_columns,primary_key=['path','taxid'])
         tax_cols=[el[0] for el in self.tax_columns]
         to_db=[]
-        f = open(tax_file,'r')
+        if '.gz' in tax_file:
+            f = gzip.open(tax_file,'r')
+        else:
+            f = open(tax_file,'r')
         for line in f:
-            dat = line.strip().split('\t')
+            if '.gz' in tax_file:
+                dat = str(line,'utf-8').strip().split('\t')
+            else:    
+                dat = line.strip().split('\t')
             if len(dat) == 3:
                 dat.extend(['',''])
             try:
@@ -431,11 +448,12 @@ class silva_db():
                 print(dat)
                 raise
             to_db.append(dat)
-        f.close()
+        if '.gz' not in f:
+            f.close()
         self.db.insert_rows('tax',tax_cols,to_db)
         #if we add tax, we must construct _ranks
         self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
-            
+    '''      
     def add_embl(self,embl_file):
         embl_columns = (('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
@@ -450,6 +468,7 @@ class silva_db():
             accession = '.'.join(line[0:3])
             to_db.append([accession]+line[3:])
         self.db.insert_rows('embl',embl_cols,to_db)
+    '''
     '''
     def get_organism_byname(self,name):
         name=name.lower()
@@ -510,7 +529,7 @@ class silva_db():
         return(dat)
 
     def write_fasta(self,accessions,fasta_file,include_taxid=False,include_path=False,
-                   include_organism_name=False,include_NCBItaxid=False):
+                   include_organism_name=False):
         cols = ['accession','seq']
         taxmap_metadata=[]
         if include_organism_name:
@@ -519,8 +538,8 @@ class silva_db():
             taxmap_metadata.append('path')
         if include_taxid:
             taxmap_metadata.append('taxid')
-        if include_NCBItaxid:
-            taxmap_metadata.append('ncbi_taxid')
+        #if include_NCBItaxid:
+        #    taxmap_metadata.append('ncbi_taxid')
         cols.extend(taxmap_metadata)
         dat = self.taxmap_lookup('accessions',accessions)
         with open(fasta_file,'w') as f:

@@ -41,8 +41,10 @@ release = ''
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
-    'sphinx.ext.napoleon'#,
- #   'numpydoc'
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autosummary',
+    'IPython.sphinxext.ipython_directive',
+    'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -192,4 +194,6 @@ napoleon_use_param = False #altered
 napoleon_use_rtype = False #altered
 napoleon_use_keyword = True
 napoleon_custom_sections = None
+autosummary_generate=True
+#autosummary_imported_members = True
 

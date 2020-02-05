@@ -1,4 +1,5 @@
 from .parser import split_newick
+import gzip
 
 #Base datastructre for tree
 class Node:
@@ -44,15 +45,21 @@ def add_node(taxid_node,taxid,children,parent_node):
             add_node(taxid_node,childtax,split_newick(cnode),current_node)
         else:
             child_node = Node(childtax)
+            child_node.set_parent(current_node)
             taxid_node[childtax] = child_node
             current_node.add_child(child_node)
 
 def load_ToL(file):
     taxid_node={}
-    with open(file, 'r') as f:
-        f=f.readlines()[0]
-        f=f.strip(';\n')
-        newick_raw,roottax=split_newick(f)[0]
-        children = split_newick(newick_raw)
-        add_node(taxid_node,roottax,children,None)
+    if '.gz' in file:
+        f =gzip.open(file,'r')
+        dat = f.readlines()[0]
+        dat = str(dat,'utf-8')
+    else:
+        with open(file, 'r') as f:
+            dat=f.readlines()[0]
+    dat=dat.strip(';\n')
+    newick_raw,roottax=split_newick(dat)[0]
+    children = split_newick(newick_raw)
+    add_node(taxid_node,roottax,children,None)
     return(taxid_node)        
