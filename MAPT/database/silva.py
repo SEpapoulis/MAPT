@@ -86,7 +86,7 @@ class silva_manager:
         if location:
             self.location=location
         else:
-            self.location = os.path.join(os.path.expanduser('~'),'.pna_designer')
+            self.location = os.path.join(os.path.expanduser('~'),'.MAPT')
             if not os.path.exists(self.location):
                 os.makedirs(self.location)
         
@@ -193,6 +193,10 @@ class silva_manager:
                 f.write(','.join([str(field),str(self._meta_dat[field])])+'\n')
 
     def _load_meta(self,release):
+        current = None
+        if release == 0:
+            current = self._find_release()
+            release=current
         meta_file = os.path.join(self.location,'metadat_{}.csv'.format(release))
         if os.path.exists(meta_file):
             with open(meta_file,'r') as f:
@@ -200,8 +204,9 @@ class silva_manager:
                     field,dat = line.strip().split(',')
                     self._meta_dat[field]=dat
         else:
-            current = self._find_release()
-            if release ==current or release == '0':# ==0 for default
+            if not current:
+                current = self._find_release()
+            if release == current:# ==0 for default
                 self._meta_dat['release']=current
                 self._meta_dat['current']='True'
             else:
@@ -225,21 +230,17 @@ class silva_manager:
 
         Returns
         -------
-        taxpaths
-            list of found taxpaths
+        tuple
+            returns a tuple containing the db entry and the number of sequences belonging to that taxon
         '''
-        dat = self.db.tax_lookup('search',taxon_name.upper())
-        taxpaths = [el['path'] for el in dat]
+        dat = self.db.tax_lookup('search',taxon_name.upper(),['path','taxid','rank'])
 
-        if print_results:
-            print("Total search results: {}".format(str(len(taxpaths))))
-            for entry in dat:
-                numseqs=len(self.get_accessions(entry['path']))
-                results = "\n\tName:       {}\n\tTaxpath:  {}\n\tTaxonomic rank:      {}\n\tNumber of sequence entries:      {}".format(
-                    taxon_name,entry['path'],entry['rank'],str(numseqs)
-                )
-                print(results)
-        return(taxpaths)
+        out = []
+        while dat:
+            entry = dat.pop()
+            out.append((entry,len(self.get_accessions(entry['path']))))
+        return(out)
+            
 
     def find_organism(self,name,print_results=True):
         '''Search for an organism in the Silva database
@@ -255,20 +256,11 @@ class silva_manager:
 
         Returns
         -------
-        accessions
-            List of silva accessions 
+        list
+            List of silva entries
         '''
         dat = self.db.taxmap_lookup('organism_name',name,['organism_name','accession','path'])
-        accessions = [el['accession'] for el in dat]
-
-        if print_results:
-            print("Total search results: {}".format(str(len(accessions))))
-            for entry in dat:
-                results = "\n\tName:       {}\n\tTaxpath:  {}\n\tSilva Accession:      {}\n\t".format(
-                    name,entry['path'],entry['accession']
-                )
-                print(results)
-        return(accessions)
+        return(dat)
 
     def get_accessions(self,taxpath):
         '''Retrieve silva accessions under a specific taxonomic unit
@@ -375,7 +367,7 @@ class silva_db():
         self.db.copycol_bypk('taxmap','seqs','accession','seq')
         self.db.drop_table('seqs')
         print('\tFinishing compilation of local silva database....  [DONE]')
-        print("Compilation Complete")
+        print("Compilation Complete\n")
 
     #this funciton will add our fasta data into the sql database
     #700000 sequences at a time (as to not overflow RAM)

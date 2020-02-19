@@ -215,6 +215,8 @@ class PNA_Designer:
         of the PNA target and sequences for PNA design will be used. 
     kmer_range: tupple, optional
         Kmer range used in PNA design. Defaults range: 9-14
+    silva_release: int, optional
+        Specify Silva release to be used. Only release >=132 avalible. Default = Current Release.
     silva_dataset: str, optional
         Silva Database used to fetch seqeucnes. Avalible options are **parc** (all sequences),
         **ref** (high quality sequences), or **nr** (non-redundant, clustered 
@@ -235,6 +237,7 @@ class PNA_Designer:
 
     def __init__(self,result_file=str(),target_silva_accession=str(),target_fastafile=str(),
     sequence_file=str(),sequence_silva_path=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
+    silva_release=int(),
     silva_dataset='ref',subunit='small',database_dir=str()):
 
         self.target = () #tuple of (accession,seq)
@@ -257,7 +260,7 @@ class PNA_Designer:
         
         #initialize the silva database
         if target_silva_accession or sequence_silva_path:
-            self.silva = silva_manager(location=database_dir,dataset=silva_dataset, subunit=subunit)
+            self.silva = silva_manager(location=database_dir,dataset=silva_dataset, subunit=subunit,release=silva_release)
         
         
         #getting the target sequence

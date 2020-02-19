@@ -1,46 +1,37 @@
-.. pna_designer documentation master file, created by
-   sphinx-quickstart on Mon Aug 12 13:35:40 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. currentmodule:: MAPT
 
-.. currentmodule:: pna_designer
-
-Welcome to pna_designer's documentation!
-========================================
+Microbiome Amplification Preference Tool
+==========================================
 Something general about the PNA
 
 
 Check how we recapitulated the design of different PNAs!
 ---------------------------------------------------------
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
+   Pages/gPNA
    Pages/mPNA
    Pages/pPNA
 
 
 Design a PNA
 ----------------------------------------
-PNA_Designer is the
-.. autoclass:: pna_designer.PNA_Designer
+PNA_Designer is the primary class for desiging
+your own custom PNA.
+
+.. autoclass:: MAPT.PNA_Designer
    :members:
 
-Mapping k-mers
+Additional Resources in this module
 ----------------------------------------
-To increase the tractibility offered to researchers, we
+To increase the tractibility offered to researchers, wes
 have made the k_mapper datatype avalible for users.
-
-.. autoclass:: pna_designer.k_mapper
-    :members:
-
-Managing Sequence Data from Silva
-----------------------------------------
-.. autoclass:: pna_designer.silva_manager
-    :members:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+
+   Pages/extra
 
 
 

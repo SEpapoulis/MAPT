@@ -1,5 +1,18 @@
 import sqlite3
 
+class entry(sqlite3.Row):
+    '''
+    Entry is a lightweight object storing sql data in memory, and is subclassed
+    from the sqlite3.Row datatype. Functions were added for 'pretty' printing
+
+    '''
+    def __repr__(self):
+        output=[]
+        for col in self.keys():
+            output.append(col+'='+str(self[col]))
+        return('entry('+','.join(output)+')')
+    def __str__(self):
+        return(self.__repr__())
 
 class sqldb():
     def __init__(self,db_file=str()):
@@ -9,7 +22,7 @@ class sqldb():
     def connect(self,db):
         conn = sqlite3.connect(db)
         #this allows row elements to be called by columns
-        conn.row_factory = sqlite3.Row
+        conn.row_factory = entry
         c = conn.cursor()
         return(conn,c)
 
