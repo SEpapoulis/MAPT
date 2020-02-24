@@ -108,7 +108,16 @@ class k_mapper:
                         self.target_match[i]+=self._kdict[kmer]
 
     def get_results(self):
-        '''returns a dictionary with mapping results'''
+        '''returns a dictionary with mapping results
+        
+        A dictionary is returned that maps variable type to thier
+        respective data. 
+
+        Returns
+        -------
+        Dictionary
+            A dictionary of results: Nucleotide, index, unique match, absolute match
+        '''
         dat = {'Nucleotide':[],'index':[],'unique match':[],'absolute match':[]}
         for i in range(0,len(self.target_match)):
             dat['Nucleotide'].append(self.target[i])
@@ -144,7 +153,7 @@ class k_mapper:
                 o.write(','.join([self.target[i],str(i),
                 str(self.target_match_unique[i]),str(self.target_match[i])]))
                 
-def map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
+def _map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
     '''
     Align a PNA to a given target sequence
 
@@ -162,6 +171,9 @@ def map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
     antiparallel_only : bool, optional
         Specifies if only the antiparallel orientation should be concidered in alignment. Defaults to False
 
+    Returns
+    -------
+    list of PNA Kmer map
 
     '''
     PNA_map = k_mapper(target)
@@ -352,7 +364,7 @@ class PNA_Designer:
 
         '''
         
-        dat=map_PNA(self.target[1],PNA,krange=self.krange,antiparallel_only=antiparallel_only)
+        dat=_map_PNA(self.target[1],PNA,krange=self.krange,antiparallel_only=antiparallel_only)
         results = self.pna.get_results()
         results['PNA mapping']=dat
         return(results)
