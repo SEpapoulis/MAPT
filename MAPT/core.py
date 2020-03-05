@@ -10,7 +10,7 @@ class k_mapper:
     Simple class for generating and mapping k-mers
 
     Nucleotide sequences can be sampled to find subsequences of 
-    k length, otherwise refered to as k-mers. k-mers are generated from 
+    k length, otherwise known as k-mers. k-mers are generated from 
     a group of sequences and subsequently mapped to a target sequence. 
     Degeneracy/ambiguity in sequences are supported, however, poor quality
     sequences with too many ambiguous nucleotides will inflate mapping results.
@@ -39,14 +39,14 @@ class k_mapper:
         #Inclusive range
         self.krng=list((range(krange[0],krange[1]+1)))
 
-        self.target= target_sequence.upper()
+        self._target= target_sequence.upper()
         self._target_klocation = self._get_target_kmermap()
         #coordiantes for unique kmers that align
-        self.target_match_unique = [0]*len(self.target)
+        self._target_match_unique = [0]*len(self._target)
 
         #coordiantes for all kmers that align, where kmers that are found
         #more often in seqlist will be weighted more
-        self.target_match = [0]*len(self.target)
+        self._target_match = [0]*len(self._target)
 
         #dictoinary mapping to defaultdicts of kmer counts
         #note, if _kdict[kmer] == 0, that means this kmer is unique
@@ -59,10 +59,10 @@ class k_mapper:
     def _get_target_kmermap(self):
         kmer_location={}
         for k in self.krng:
-            for i in range(k,len(self.target)+1):
+            for i in range(k,len(self._target)+1):
                 start=i-k
                 stop =i 
-                kmer = self.target[start:stop]
+                kmer = self._target[start:stop]
                 if kmer in kmer_location:
                     kmer_location[kmer].append(range(start,stop))
                 else:
@@ -104,8 +104,8 @@ class k_mapper:
                     #change range to list to indicies to add
                     loc = list(location)
                     for i in loc:
-                        self.target_match_unique[i]+=1
-                        self.target_match[i]+=self._kdict[kmer]
+                        self._target_match_unique[i]+=1
+                        self._target_match[i]+=self._kdict[kmer]
 
     def get_results(self):
         '''returns a dictionary with mapping results
@@ -119,23 +119,23 @@ class k_mapper:
             A dictionary of results: Nucleotide, index, unique match, absolute match
         '''
         dat = {'Nucleotide':[],'index':[],'unique match':[],'absolute match':[]}
-        for i in range(0,len(self.target_match)):
-            dat['Nucleotide'].append(self.target[i])
+        for i in range(0,len(self._target_match)):
+            dat['Nucleotide'].append(self._target[i])
             dat['index'].append(i)
-            dat['unique match'].append(self.target_match_unique[i])
-            dat['absolute match'].append(self.target_match[i])
+            dat['unique match'].append(self._target_match_unique[i])
+            dat['absolute match'].append(self._target_match[i])
         return(dat)
 
     def write_results(self,file_name):
         '''
         Generate mapping file
 
-        A spreadsheet will be generated showing the unquie and
+        A spreadsheet will be generated showing the unique and
         absolute kmer mappings to the target sequence. The number
         of absolute mappings is relative to the number of sequences
         used to generate kmers, thus, absolute mapping will change with
-        the size of the dataset. Columns are the nucleotide of the target,
-        index of target sequence, number of unquie k-mer matches, and 
+        the size of the data set. Columns are the nucleotide of the target,
+        index of target sequence, number of unique k-mer matches, and 
         the number of k-mer absolute matches
 
 
@@ -148,10 +148,10 @@ class k_mapper:
 
         with open(file_name,'w') as o:
             o.write('Nucleotide,index,unique match,absolute match')
-            for i in range(0,len(self.target_match)):
+            for i in range(0,len(self._target_match)):
                 o.write('\n')
-                o.write(','.join([self.target[i],str(i),
-                str(self.target_match_unique[i]),str(self.target_match[i])]))
+                o.write(','.join([self._target[i],str(i),
+                str(self._target_match_unique[i]),str(self._target_match[i])]))
                 
 def _map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
     '''
@@ -169,7 +169,7 @@ def _map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
     krange : tuple, optional
         the k-mer range used for alignemnt. Defaults to 9-13 (inclusive)
     antiparallel_only : bool, optional
-        Specifies if only the antiparallel orientation should be concidered in alignment. Defaults to False
+        Specifies if only the antiparallel orientation should be considered in alignment. Defaults to False
 
     Returns
     -------
@@ -182,7 +182,7 @@ def _map_PNA(target,PNA,krange=(9,13),antiparallel_only=False):
         PNAr = PNA[::-1]
         PNA_map.add_sequence(PNAr)
     PNA_map.map_kmers()
-    return(PNA_map.target_match)
+    return(PNA_map._target_match)
 
 class InputError(Exception):
     """Raised when user input arguments are incorrect"""
@@ -195,16 +195,16 @@ def _XOR(a,b):
 class PNA_Designer:
     '''
     A tool used to streamline the design of PNA oligos used for blocking
-    amplificaiton of specific DNAs during PCR amplificaiton 
+    amplification of specific DNAs during PCR amplification 
     
-    PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunatly,
+    PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunately,
     no single PNA is universal in blocking DNA, thus, each requires testing in order to determine
-    the sequence space being blocked during amplificaiton. This tool automates inital *in silico* 
+    the sequence space being blocked during amplification. This tool automates inital *in silico* 
     analysis required for development of a new PNA. To complement automatic analysis, this tool
-    also makes data access more convient by utilizing RNA sequence data avalible
+    also makes data access more convient by utilizing RNA sequence data available
     at the `Silva database <https://www.arb-silva.de/>`_. Silva identifiers can be used to 
-    specify either the PNA target sequence or sequences concidered in the analysis. A copy of silva
-    datasets will be download and then compiled. 
+    specify either the PNA target sequence or sequences considered in the analysis. A copy of silva
+    data sets will be download and then compiled. 
 
     Parameters
     ----------
@@ -216,28 +216,28 @@ class PNA_Designer:
         Fasta file with PNA target. File should only have PNA target sequence. Required if
         "target_silva_accession" is not provided.
     sequence_file: str, optional
-        Fasta file used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
-    sequence_silva_taxid: int, optional
-        Silva taxid used to desgin the PNA. Required if "sequence_silva_taxid" not provided.
+        Fasta file used to design the PNA. Required if "sequence_silva_path" not provided.
+    sequence_silva_path: str, optional
+        Silva path used to design the PNA. Required if "sequence_file" not provided.
     primer_F: str, optional
         Forward primer used for the in silico amplification. If not specified, the full sequence
         of the PNA target and sequences for PNA design will be used. 
     primer_R: str, optional
         Reverse primer used for the in silico amplification. If not specified, the full sequence
         of the PNA target and sequences for PNA design will be used. 
-    kmer_range: tupple, optional
+    kmer_range: tuple, optional
         Kmer range used in PNA design. Defaults range: 9-14
     silva_release: int, optional
-        Specify Silva release to be used. Only release >=132 avalible. Default = Current Release.
+        Specify Silva release to be used. Only release >=132 available. Default = Current Release.
     silva_dataset: str, optional
-        Silva Database used to fetch seqeucnes. Avalible options are **parc** (all sequences),
+        Silva Database used to fetch sequences. Available options are **parc** (all sequences),
         **ref** (high quality sequences), or **nr** (non-redundant, clustered 
         99% identity criterion). Defaults to **nr**
     subunit: str, optional
         Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
     database_dir: str, optional
         Local directory of silva database if "target_silva_accession" or 
-        "sequence_silva_taxid" is specified. Defualt locaiton is "~/.pna_designer"
+        "sequence_silva_taxid" is specified. Default is "~/.MAPT"
         
     Attributes
     ----------
@@ -252,11 +252,11 @@ class PNA_Designer:
     silva_release=int(),
     silva_dataset='ref',subunit='small',database_dir=str()):
 
-        self.target = () #tuple of (accession,seq)
-        self.primer_F = primer_F
-        self.primer_R = primer_R
+        self._target = () #tuple of (accession,seq)
+        self._primer_F = primer_F
+        self._primer_R = primer_R
         self.failed_amplification=[]
-        self.krange = kmer_range
+        self._krange = kmer_range
         
         #raise an error if the correct sequencing data was not provided
         #both or missing or both a provided throws an error
@@ -266,7 +266,7 @@ class PNA_Designer:
         if not _XOR(sequence_file,sequence_silva_path):
             raise InputError("Please provide either a fasta file or a silva taxonomic ID")
 
-        if _XOR(self.primer_F,self.primer_R):
+        if _XOR(self._primer_F,self._primer_R):
             raise InputError("You must provide both Forward and Reverse primers")
 
         
@@ -278,22 +278,22 @@ class PNA_Designer:
         #getting the target sequence
         if target_fastafile:
             for i,line in enumerate(self._iter_fasta(target_fastafile)):
-                self.target = line
+                self._target = line
                 if i > 0:
                     raise InputError("You can only design a PNA for a single sequence or consensus sequence")
         #no target_fasta, get silva
         else:
             dat=self.silva.get_seqs(target_silva_accession)[0]
-            self.target = (dat[0],dat[1])
+            self._target = (dat[0],dat[1])
 
         #amplify target if needed
-        if primer_F and primer_R:
+        if self._primer_F and self._primer_R:
             print("Amplifying PNA target")
-            target_amplicon=InSilico_PCR.sim_amplify(self.primer_F,self.primer_R,self.target[1])
-            self.target = (self.target[0],target_amplicon)
+            target_amplicon=InSilico_PCR.sim_amplify(self._primer_F,self._primer_R,self._target[1])
+            self._target = (self._target[0],target_amplicon)
 
         #initialize the k-mer mapper
-        self.pna = k_mapper(target_sequence=self.target[1],krange = kmer_range)
+        self.pna = k_mapper(target_sequence=self._target[1],krange = kmer_range)
         
         #Lets starting adding sequences to make our PNA
         if sequence_silva_path:
@@ -302,11 +302,11 @@ class PNA_Designer:
             sequence_iterator = self._iter_fasta(sequence_file)
         
         #if amplifying targets 
-        if self.primer_F and self.primer_R:
+        if self._primer_F and self._primer_R:
             print("Amplifying and Collecting sequence K-mers")
             for accession,sequence in sequence_iterator:
                 try:
-                    seq = InSilico_PCR.sim_amplify(self.primer_F,self.primer_R,sequence)
+                    seq = InSilico_PCR.sim_amplify(self._primer_F,self._primer_R,sequence)
                     self.pna.add_sequence(seq)
                 except InSilico_PCR.PrimerError:
                     self.failed_amplification.append(accession)
@@ -364,7 +364,7 @@ class PNA_Designer:
 
         '''
         
-        dat=_map_PNA(self.target[1],PNA,krange=self.krange,antiparallel_only=antiparallel_only)
+        dat=_map_PNA(self._target[1],PNA,krange=self._krange,antiparallel_only=antiparallel_only)
         results = self.pna.get_results()
         results['PNA mapping']=dat
         return(results)

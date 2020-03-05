@@ -68,7 +68,7 @@ class silva_manager:
     Parameters
     ----------
     location: str
-        Directory location for local database copy. Defualt locaiton is “~/.pna_designer”
+        Directory location for local database copy. Default location is “~/.MAPT"
     dataset : str
         Avalible options are **parc** (all sequences),
         **ref** (high quality sequences), or **nr** (non-redundant, clustered 
@@ -76,7 +76,7 @@ class silva_manager:
     subunit: tuple of ints, optional
         Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
     release : int, optional
-        Specify a Silva release. Default = Current. Note that only release 132 or greater are avlible
+        Specify a Silva release. Default = Current. Note that only release 132 or greater are available
     
     '''
 
@@ -95,7 +95,7 @@ class silva_manager:
 
         #Generating the filenames for the database
         self._meta_dat = {}
-        self._load_meta(release=str(release))
+        self._load_meta(release=release)
         self.__generate_filenames(dataset,subunit)
         if os.path.exists(self.db_file):
             self.db = silva_db(self.db_file,self.tree_file)

@@ -36,7 +36,7 @@
             
   <div class="section" id="microbiome-amplification-preference-tool">
 <h1>Microbiome Amplification Preference Tool<a class="headerlink" href="#microbiome-amplification-preference-tool" title="Permalink to this headline">¶</a></h1>
-<p>Something general about the PNA</p>
+<p>Welcome! The goal of MAPT is to allow researchers greater flexibility when designing oligonucleotides to block unwanted sequences. We focus on PNAs, peptide nucleic acids, that are frequently designed to block host DNA but can be applied widely, as researchers see fit. With our tool scientists can add the primers they plan on using, and the sequence that they want to block as well as find out what sequences are at risk of being blocked unnecessarily.</p>
 <div class="section" id="check-how-we-recapitulated-the-design-of-different-pnas">
 <h2>Check how we recapitulated the design of different PNAs!<a class="headerlink" href="#check-how-we-recapitulated-the-design-of-different-pnas" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
@@ -49,21 +49,21 @@
 </div>
 <div class="section" id="design-a-pna">
 <h2>Design a PNA<a class="headerlink" href="#design-a-pna" title="Permalink to this headline">¶</a></h2>
-<p>PNA_Designer is the primary class for desiging
+<p>PNA_Designer is the primary class for designing
 your own custom PNA.</p>
 <dl class="class">
 <dt id="MAPT.PNA_Designer">
 <em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">PNA_Designer</code><span class="sig-paren">(</span><em class="sig-param">result_file=''</em>, <em class="sig-param">target_silva_accession=''</em>, <em class="sig-param">target_fastafile=''</em>, <em class="sig-param">sequence_file=''</em>, <em class="sig-param">sequence_silva_path=0</em>, <em class="sig-param">primer_F=''</em>, <em class="sig-param">primer_R=''</em>, <em class="sig-param">kmer_range=(9</em>, <em class="sig-param">14)</em>, <em class="sig-param">silva_release=0</em>, <em class="sig-param">silva_dataset='ref'</em>, <em class="sig-param">subunit='small'</em>, <em class="sig-param">database_dir=''</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.PNA_Designer" title="Permalink to this definition">¶</a></dt>
 <dd><p>A tool used to streamline the design of PNA oligos used for blocking
-amplificaiton of specific DNAs during PCR amplificaiton</p>
-<p>PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunatly,
+amplification of specific DNAs during PCR amplification</p>
+<p>PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunately,
 no single PNA is universal in blocking DNA, thus, each requires testing in order to determine
-the sequence space being blocked during amplificaiton. This tool automates inital <em>in silico</em>
+the sequence space being blocked during amplification. This tool automates inital <em>in silico</em>
 analysis required for development of a new PNA. To complement automatic analysis, this tool
-also makes data access more convient by utilizing RNA sequence data avalible
+also makes data access more convient by utilizing RNA sequence data available
 at the <a class="reference external" href="https://www.arb-silva.de/">Silva database</a>. Silva identifiers can be used to
-specify either the PNA target sequence or sequences concidered in the analysis. A copy of silva
-datasets will be download and then compiled.</p>
+specify either the PNA target sequence or sequences considered in the analysis. A copy of silva
+data sets will be download and then compiled.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -71,20 +71,20 @@ datasets will be download and then compiled.</p>
 <li><p><strong>target_silva_accession</strong> (<em>str, optional</em>) – Silva accession of PNA target. Required if “target_fastafile” is not provided.</p></li>
 <li><p><strong>target_fastafile</strong> (<em>str, optional</em>) – Fasta file with PNA target. File should only have PNA target sequence. Required if
 “target_silva_accession” is not provided.</p></li>
-<li><p><strong>sequence_file</strong> (<em>str, optional</em>) – Fasta file used to desgin the PNA. Required if “sequence_silva_taxid” not provided.</p></li>
-<li><p><strong>sequence_silva_taxid</strong> (<em>int, optional</em>) – Silva taxid used to desgin the PNA. Required if “sequence_silva_taxid” not provided.</p></li>
+<li><p><strong>sequence_file</strong> (<em>str, optional</em>) – Fasta file used to design the PNA. Required if “sequence_silva_path” not provided.</p></li>
+<li><p><strong>sequence_silva_path</strong> (<em>str, optional</em>) – Silva path used to design the PNA. Required if “sequence_file” not provided.</p></li>
 <li><p><strong>primer_F</strong> (<em>str, optional</em>) – Forward primer used for the in silico amplification. If not specified, the full sequence
 of the PNA target and sequences for PNA design will be used.</p></li>
 <li><p><strong>primer_R</strong> (<em>str, optional</em>) – Reverse primer used for the in silico amplification. If not specified, the full sequence
 of the PNA target and sequences for PNA design will be used.</p></li>
-<li><p><strong>kmer_range</strong> (<em>tupple, optional</em>) – Kmer range used in PNA design. Defaults range: 9-14</p></li>
-<li><p><strong>silva_release</strong> (<em>int, optional</em>) – Specify Silva release to be used. Only release &gt;=132 avalible. Default = Current Release.</p></li>
-<li><p><strong>silva_dataset</strong> (<em>str, optional</em>) – Silva Database used to fetch seqeucnes. Avalible options are <strong>parc</strong> (all sequences),
+<li><p><strong>kmer_range</strong> (<em>tuple, optional</em>) – Kmer range used in PNA design. Defaults range: 9-14</p></li>
+<li><p><strong>silva_release</strong> (<em>int, optional</em>) – Specify Silva release to be used. Only release &gt;=132 available. Default = Current Release.</p></li>
+<li><p><strong>silva_dataset</strong> (<em>str, optional</em>) – Silva Database used to fetch sequences. Available options are <strong>parc</strong> (all sequences),
 <strong>ref</strong> (high quality sequences), or <strong>nr</strong> (non-redundant, clustered
 99% identity criterion). Defaults to <strong>nr</strong></p></li>
 <li><p><strong>subunit</strong> (<em>str, optional</em>) – Specify <strong>large</strong> or <strong>small</strong> ribosomal subunit in silva database. Defaults to <strong>small</strong></p></li>
 <li><p><strong>database_dir</strong> (<em>str, optional</em>) – Local directory of silva database if “target_silva_accession” or
-“sequence_silva_taxid” is specified. Defualt locaiton is “~/.pna_designer”</p></li>
+“sequence_silva_taxid” is specified. Default is “~/.MAPT”</p></li>
 </ul>
 </dd>
 <dt class="field-even">Variables</dt>
@@ -113,8 +113,8 @@ can bind to DNA in either orientation, thus, the reverse of the PNA is also sear
 </div>
 <div class="section" id="additional-resources-in-this-module">
 <h2>Additional Resources in this module<a class="headerlink" href="#additional-resources-in-this-module" title="Permalink to this headline">¶</a></h2>
-<p>To increase the tractibility offered to researchers, wes
-have made the k_mapper datatype avalible for users.</p>
+<p>To increase the tractability offered to researchers, we
+have made the k_mapper datatype available for users.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="Pages/extra.html">Managing Sequence Data from Silva</a><ul class="simple">
@@ -123,6 +123,7 @@ have made the k_mapper datatype avalible for users.</p>
 <li class="toctree-l1"><a class="reference internal" href="Pages/extra.html#mapping-kmers">Mapping Kmers</a><ul class="simple">
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Pages/extra.html#r-code-for-k-mer-mapping-figures-in-docs">R code for k-mer mapping figures in docs</a></li>
 </ul>
 </div>
 </div>

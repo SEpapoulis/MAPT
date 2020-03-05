@@ -1,0 +1,295 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Managing Sequence Data from Silva &#8212; pna_designer  documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="recapitulating the pPNA" href="pPNA.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="pPNA.html" title="recapitulating the pPNA"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">pna_designer  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="managing-sequence-data-from-silva">
+<h1>Managing Sequence Data from Silva<a class="headerlink" href="#managing-sequence-data-from-silva" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="MAPT.silva_manager">
+<em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">silva_manager</code><span class="sig-paren">(</span><em class="sig-param">location=''</em>, <em class="sig-param">dataset='ref'</em>, <em class="sig-param">subunit='small'</em>, <em class="sig-param">release=0</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Manager class used to search and retrieve Silva sequences</p>
+<p>The Silva manager class is used by the PNA_Designer to retrieve sequences
+under a specific taxonomic unit, however, users can access the silva_manager API
+for their own uses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>location</strong> (<em>str</em>) – Directory location for local database copy. Default location is “~/.MAPT”</p></li>
+<li><p><strong>dataset</strong> (<em>str</em>) – Avalible options are <strong>parc</strong> (all sequences),
+<strong>ref</strong> (high quality sequences), or <strong>nr</strong> (non-redundant, clustered
+99% identity criterion). Defaults to <strong>nr</strong></p></li>
+<li><p><strong>subunit</strong> (<em>tuple of ints, optional</em>) – Specify <strong>large</strong> or <strong>small</strong> ribosomal subunit in silva database. Defaults to <strong>small</strong></p></li>
+<li><p><strong>release</strong> (<em>int, optional</em>) – Specify a Silva release. Default = Current. Note that only release 132 or greater are available</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="MAPT.silva_manager.find_organism">
+<code class="sig-name descname">find_organism</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">print_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.find_organism" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for an organism in the Silva database</p>
+<p>You can directly search for a organism by the name. Be aware that only eact matches to the organism name will be shown.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – name of the organism. Case sensitive.</p></li>
+<li><p><strong>print_results</strong> (<em>bool</em>) – All entries found will be printed with additional metadata. Default True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>list</em> – List of silva entries</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.silva_manager.find_taxpath">
+<code class="sig-name descname">find_taxpath</code><span class="sig-paren">(</span><em class="sig-param">taxon_name</em>, <em class="sig-param">print_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.find_taxpath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search for taxonomic unit in Silva database</p>
+<p>Finds information on the given taxonomic name provided. Spelling must be exact to taxonomic name
+to find results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>taxon_name</strong> (<em>str</em>) – name of taxon to be searched. Case insensitive</p></li>
+<li><p><strong>print_results</strong> (<em>bool</em>) – All entries found will be printed with additional metadata. Default True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>tuple</em> – returns a tuple containing the db entry and the number of sequences belonging to that taxon</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.silva_manager.get_accessions">
+<code class="sig-name descname">get_accessions</code><span class="sig-paren">(</span><em class="sig-param">taxpath</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.get_accessions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve silva accessions under a specific taxonomic unit</p>
+<p>For a given silva taxonomic path, all accessions under this taxon will be retrieved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>taxpath</strong> (<em>str</em>) – Desired Silva taxpath. For example, Fungi would be: “Eukaryota;Opisthokonta;Nucletmycea;Fungi;”.
+Use find_taxpath() to search the database for a specific taxpath, or use the silva website</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>accessions</em> – List of silva accessions under the given taxonomic path</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.silva_manager.get_seqs">
+<code class="sig-name descname">get_seqs</code><span class="sig-paren">(</span><em class="sig-param">accessions</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.get_seqs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve sequences from input accessions</p>
+<p>For a given list of accessions, retrieve documented sequences</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>accessions</strong> (<em>list of accessions</em>) – list of accessions used for sequence retrieval</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>Sequence list</em> – A list of tuples(accession,sequence)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+</div>
+</div>
+<div class="section" id="mapping-kmers">
+<h1>Mapping Kmers<a class="headerlink" href="#mapping-kmers" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="MAPT.k_mapper">
+<em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">k_mapper</code><span class="sig-paren">(</span><em class="sig-param">target_sequence</em>, <em class="sig-param">sequences=[]</em>, <em class="sig-param">krange=(9</em>, <em class="sig-param">14)</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.k_mapper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple class for generating and mapping k-mers</p>
+<p>Nucleotide sequences can be sampled to find subsequences of
+k length, otherwise known as k-mers. k-mers are generated from
+a group of sequences and subsequently mapped to a target sequence.
+Degeneracy/ambiguity in sequences are supported, however, poor quality
+sequences with too many ambiguous nucleotides will inflate mapping results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_sequence</strong> (<em>str</em>) – Nucleotide sequence that k-mers will be mapped to.</p></li>
+<li><p><strong>sequences</strong> (<em>list of str</em>) – Nucleotide sequences that k-mers will be generated from.</p></li>
+<li><p><strong>krange</strong> (<em>tuple of ints, optional</em>) – Size range of k-mers to be generated. Inclusive. Default: (9,14)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Variables</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>target</strong> (<em>str</em>) – Where k-mers are being mapped</p></li>
+<li><p><strong>target_match</strong> (<em>list of ints</em>) – k-mer mapping result, number of times a k-mer mapped to a specific index in the target sequence</p></li>
+<li><p><strong>target_match_unique</strong> (<em>list of ints</em>) – k-mer mapping result, number of times a unique k-mer mapped to a specific index in the target sequence</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="method">
+<dt id="MAPT.k_mapper.add_sequence">
+<code class="sig-name descname">add_sequence</code><span class="sig-paren">(</span><em class="sig-param">sequence</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.k_mapper.add_sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a sequence that will be used to generate k-mers</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>sequence</strong> (<em>str</em>) – Nucleotide sequence</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.k_mapper.get_results">
+<code class="sig-name descname">get_results</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.k_mapper.get_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns a dictionary with mapping results</p>
+<p>A dictionary is returned that maps variable type to thier
+respective data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><em>Dictionary</em> – A dictionary of results: Nucleotide, index, unique match, absolute match</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.k_mapper.map_kmers">
+<code class="sig-name descname">map_kmers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.k_mapper.map_kmers" title="Permalink to this definition">¶</a></dt>
+<dd><p>map kmers to target sequence</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.k_mapper.write_results">
+<code class="sig-name descname">write_results</code><span class="sig-paren">(</span><em class="sig-param">file_name</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.k_mapper.write_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate mapping file</p>
+<p>A spreadsheet will be generated showing the unique and
+absolute kmer mappings to the target sequence. The number
+of absolute mappings is relative to the number of sequences
+used to generate kmers, thus, absolute mapping will change with
+the size of the data set. Columns are the nucleotide of the target,
+index of target sequence, number of unique k-mer matches, and
+the number of k-mer absolute matches</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>file_name</strong> (<em>str</em>) – Mapping file name</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+</div>
+</div>
+<div class="section" id="r-code-for-k-mer-mapping-figures-in-docs">
+<h1>R code for k-mer mapping figures in docs<a class="headerlink" href="#r-code-for-k-mer-mapping-figures-in-docs" title="Permalink to this headline">¶</a></h1>
+<p>Feel free to use this R code to generate plots showing k-mer mappings!
+~~~
+PNA &lt;- read.csv(‘path/to/pna/results/after/mapping/pna’)</p>
+<p>library(‘ggplot2’)
+axis_text_size = 14</p>
+<p>org_name &lt;- “your organism name”</p>
+<dl>
+<dt>plt&lt;-ggplot(PNA,aes(x=index,y=absolute.match))+</dt><dd><p>geom_line()+
+geom_line(aes(y=unique.match),color=’blue’)+
+geom_line(aes(y=PNA.mapping),color = ‘red’)+
+scale_y_log10(</p>
+<blockquote>
+<div><p>breaks = scales::trans_breaks(“log10”, function(x) 10^x),
+labels = scales::trans_format(“log10”, scales::math_format(.x)))+</p>
+</div></blockquote>
+<p>theme_bw()+
+theme(panel.border = element_blank(), panel.grid.minor = element_blank(),panel.grid.major = element_blank(),</p>
+<blockquote>
+<div><p>axis.line = element_line(color=”black”),
+axis.text = element_text(size=axis_text_size),
+axis.title=element_text(size=axis_text_size))+</p>
+</div></blockquote>
+<p>labs(y=”Log K-mer Matches”,x=org_name)</p>
+</dd>
+</dl>
+<p>~~~</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Managing Sequence Data from Silva</a></li>
+<li><a class="reference internal" href="#mapping-kmers">Mapping Kmers</a></li>
+<li><a class="reference internal" href="#r-code-for-k-mer-mapping-figures-in-docs">R code for k-mer mapping figures in docs</a></li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="pPNA.html"
+                        title="previous chapter">recapitulating the pPNA</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/Pages/extra.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="pPNA.html" title="recapitulating the pPNA"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">pna_designer  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Spiridon Evangelos Papoulis.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+    </div>
+  </body>
+</html>

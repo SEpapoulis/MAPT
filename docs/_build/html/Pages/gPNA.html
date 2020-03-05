@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Recapitulating the gPNA &#8212; pna_designer  documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Recapitulating the mPNA" href="mPNA.html" />
+    <link rel="prev" title="Microbiome Amplification Preference Tool" href="../index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="mPNA.html" title="Recapitulating the mPNA"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="Microbiome Amplification Preference Tool"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">pna_designer  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="recapitulating-the-gpna">
+<h1>Recapitulating the gPNA<a class="headerlink" href="#recapitulating-the-gpna" title="Permalink to this headline">¶</a></h1>
+<p>Overview of MAPT
+MAPT, the Microbiome Amplification Preference Tool, is designed to find regions of homology between the host and its microbiome. MAPT has great flexibility, as any FASTA sequence can be used as the target sequence, i.e the sequence that should be blocked. As you can see below, for the gPNA that sequence is Medicago sativa. MAPT users also specify the primers (shown below as the forward and reverse primer as Fprimer and Rprimer. This helps as only organisms that have homology to these primers are amplified in silico. The microbiome sequences can come from SILVA, and can be specified by taxonomy, as well as imported as FASTA sequences. K-mer range is the size that the sequences are fractionated into, such that K-mer range of 9-13 fractionates reads into sizes 9 to 13. By doing so we can identify regions that are ideal for targeting host amplification with oligonucleotides, such as PNAs, that will bind to host DNA and block amplification.</p>
+<div class="section" id="required-information">
+<h2>Required Information<a class="headerlink" href="#required-information" title="Permalink to this headline">¶</a></h2>
+<p>Explanation of the materials needed (target sequence,
+sequence file, primers, and k-mer range)</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">import</span> <span class="nn">MAPT</span>
+
+<span class="gp">In [2]: </span><span class="n">Medicago_sativa</span> <span class="o">=</span> <span class="s2">&quot;GAFF01033989.4391.6188&quot;</span>
+
+<span class="gp">In [3]: </span><span class="n">result_file</span><span class="o">=</span><span class="s1">&#39;data/gPNA.csv&#39;</span>
+
+<span class="gp">In [4]: </span><span class="n">Rprimer</span><span class="o">=</span><span class="s2">&quot;GTGYCAGCMGCCGCGGTAA&quot;</span>
+
+<span class="gp">In [5]: </span><span class="n">Fprimer</span> <span class="o">=</span> <span class="s2">&quot;CCGYCAATTYMTTTRAGTTT&quot;</span>
+
+<span class="gp">In [6]: </span><span class="n">krng</span> <span class="o">=</span> <span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="mi">13</span><span class="p">)</span>
+
+<span class="gp">In [7]: </span><span class="n">silva</span> <span class="o">=</span> <span class="n">MAPT</span><span class="o">.</span><span class="n">silva_manager</span><span class="p">(</span><span class="n">release</span><span class="o">=</span><span class="mi">132</span><span class="p">)</span>
+
+<span class="gp">In [8]: </span><span class="n">search</span> <span class="o">=</span> <span class="n">silva</span><span class="o">.</span><span class="n">find_taxpath</span><span class="p">(</span><span class="s1">&#39;Fungi&#39;</span><span class="p">)</span>
+
+<span class="gp">In [9]: </span><span class="k">print</span><span class="p">(</span><span class="n">search</span><span class="p">)</span>
+<span class="go">[(entry(path=Eukaryota;Opisthokonta;Nucletmycea;Fungi;,taxid=6516,rank=kingdom), 29123)]</span>
+</pre></div>
+</div>
+<p>Using the silva_manager, we are able to search a local copy of the
+Silva database. Here, we are able to find the taxonomic path of Fungi and the protist phyla Cercozoa to collect sequences from the Silva database. Now that we have all
+of our materials, we can begin mapping Fungal k-mers from silva to
+the 18S of <a href="#id1"><span class="problematic" id="id2">*</span></a>Medicago sativa <a href="#id3"><span class="problematic" id="id4">*</span></a>.</p>
+</div>
+<div class="section" id="generating-k-mer-maps">
+<h2>Generating K-mer maps<a class="headerlink" href="#generating-k-mer-maps" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [10]: </span><span class="n">fungi_path</span> <span class="o">=</span> <span class="n">search</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;path&#39;</span><span class="p">]</span> <span class="c1">#getting the path out of the search results</span>
+
+<span class="gp">In [11]: </span><span class="n">designer_gPNA</span> <span class="o">=</span> <span class="n">MAPT</span><span class="o">.</span><span class="n">PNA_Designer</span><span class="p">(</span><span class="n">result_file</span> <span class="o">=</span> <span class="s1">&#39;data/gPNA.csv&#39;</span><span class="p">,</span><span class="n">target_silva_accession</span> <span class="o">=</span> <span class="n">Medicago_sativa</span><span class="p">,</span> <span class="n">sequence_silva_path</span> <span class="o">=</span> <span class="n">fungi_path</span><span class="p">,</span> <span class="n">primer_F</span><span class="o">=</span><span class="n">Fprimer</span><span class="p">,</span><span class="n">primer_R</span> <span class="o">=</span> <span class="n">Rprimer</span><span class="p">,</span> <span class="n">kmer_range</span> <span class="o">=</span> <span class="n">krng</span><span class="p">,</span><span class="n">silva_release</span> <span class="o">=</span> <span class="mi">132</span><span class="p">)</span>
+<span class="go">Amplifying PNA target</span>
+<span class="go">Amplifying and Collecting sequence K-mers</span>
+<span class="go">	WARNING: 2741 sequences failed to amplify, please see attribute &quot;failed_amplification&quot;</span>
+<span class="go">Mapping Kmers</span>
+<span class="go">Mapping Complete</span>
+<span class="go">Results have been written to data/gPNA.csv</span>
+</pre></div>
+</div>
+<p>MAPT has automatically detected that some of the sequences
+in the silva data-set failed to find <strong>exact</strong> primer matches. We
+can view these sequences by looking at the ‘failed_amplification’ attribute
+of MAPT.</p>
+<p>With our k-mers mapped, we are able to visualize our data! But before
+we do, we will quickly map the gPNA. While PNAs have a higher affinity
+to the antiparallel direction, they can also bind in the parallel direction
+as well. We will allow the PNA to bind in both directions for plotting</p>
+</div>
+<div class="section" id="mapping-a-pna">
+<h2>Mapping a PNA<a class="headerlink" href="#mapping-a-pna" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [12]: </span><span class="n">gPNA</span> <span class="o">=</span> <span class="s2">&quot;CGGCCGCTACGC&quot;</span>
+
+<span class="gp">In [13]: </span><span class="n">mapping</span> <span class="o">=</span> <span class="n">designer_gPNA</span><span class="o">.</span><span class="n">map_PNA</span><span class="p">(</span><span class="n">gPNA</span><span class="p">,</span><span class="n">antiparallel_only</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="gp">In [14]: </span><span class="kn">import</span> <span class="nn">pandas</span><span class="c1">#pandas is a module for working with dataframe objects in python, highly recommend!</span>
+
+<span class="gp">In [15]: </span><span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span>
+<span class="gh">Out[15]: </span><span class="go"></span>
+<span class="go">    Nucleotide  index  unique match  absolute match  PNA mapping</span>
+<span class="go">0            G      0            10              42            0</span>
+<span class="go">1            G      1            20             102            0</span>
+<span class="go">2            T      2            30             152            0</span>
+<span class="go">3            C      3            40             248            0</span>
+<span class="go">4            G      4            50             726            0</span>
+<span class="go">..         ...    ...           ...             ...          ...</span>
+<span class="go">585          T    585            50          336812            0</span>
+<span class="go">586          G    586            40          306868            0</span>
+<span class="go">587          A    587            30          262928            0</span>
+<span class="go">588          C    588            20          201276            0</span>
+<span class="go">589          A    589            10          112182            0</span>
+
+<span class="go">[590 rows x 5 columns]</span>
+</pre></div>
+</div>
+<p>Now that we have data tables, use your favorite software to make
+a figure! We will use a custom R script to plot our data.</p>
+<img alt="../_images/gPNA.png" src="../_images/gPNA.png" />
+</div>
+<div class="section" id="gpna-and-protist">
+<h2>gPNA and Protist<a class="headerlink" href="#gpna-and-protist" title="Permalink to this headline">¶</a></h2>
+<p>To demonstrate the ease of testing PNA design
+with other organisms, we can show the gPNA is
+projected to avoid blocking Protists as well.
+We rerun the analysis, this time mapping Cercozoa 18S reads
+to evaluate gPNA blockage of this group of single-celled
+eukaryotes</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [16]: </span><span class="n">protist</span><span class="o">=</span><span class="n">silva</span><span class="o">.</span><span class="n">find_taxpath</span><span class="p">(</span><span class="s2">&quot;Cercozoa&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;path&#39;</span><span class="p">]</span><span class="c1">#check docs for find_taxpath return</span>
+
+<span class="gp">In [17]: </span><span class="n">designer_gPNA_protist</span> <span class="o">=</span> <span class="n">MAPT</span><span class="o">.</span><span class="n">PNA_Designer</span><span class="p">(</span><span class="n">result_file</span><span class="o">=</span><span class="s1">&#39;datagPNA_protist.csv&#39;</span><span class="p">,</span> <span class="n">target_silva_accession</span><span class="o">=</span><span class="n">Medicago_sativa</span><span class="p">,</span> <span class="n">sequence_silva_path</span><span class="o">=</span><span class="n">protist</span><span class="p">,</span> <span class="n">primer_F</span><span class="o">=</span><span class="n">Fprimer</span><span class="p">,</span><span class="n">primer_R</span><span class="o">=</span><span class="n">Rprimer</span><span class="p">,</span><span class="n">kmer_range</span><span class="o">=</span><span class="n">krng</span><span class="p">,</span><span class="n">silva_release</span><span class="o">=</span><span class="mi">132</span><span class="p">)</span>
+<span class="go">Amplifying PNA target</span>
+<span class="go">Amplifying and Collecting sequence K-mers</span>
+<span class="go">	WARNING: 577 sequences failed to amplify, please see attribute &quot;failed_amplification&quot;</span>
+<span class="go">Mapping Kmers</span>
+<span class="go">Mapping Complete</span>
+<span class="go">Results have been written to datagPNA_protist.csv</span>
+
+<span class="gp">In [18]: </span><span class="n">gPNA_protists</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">designer_gPNA_protist</span><span class="o">.</span><span class="n">map_PNA</span><span class="p">(</span><span class="n">gPNA</span><span class="p">))</span>
+</pre></div>
+</div>
+<img alt="../_images/gPNA_protist.png" src="../_images/gPNA_protist.png" />
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Recapitulating the gPNA</a><ul>
+<li><a class="reference internal" href="#required-information">Required Information</a></li>
+<li><a class="reference internal" href="#generating-k-mer-maps">Generating K-mer maps</a></li>
+<li><a class="reference internal" href="#mapping-a-pna">Mapping a PNA</a></li>
+<li><a class="reference internal" href="#gpna-and-protist">gPNA and Protist</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../index.html"
+                        title="previous chapter">Microbiome Amplification Preference Tool</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="mPNA.html"
+                        title="next chapter">Recapitulating the mPNA</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/Pages/gPNA.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="mPNA.html" title="Recapitulating the mPNA"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../index.html" title="Microbiome Amplification Preference Tool"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">pna_designer  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Spiridon Evangelos Papoulis.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+    </div>
+  </body>
+</html>
