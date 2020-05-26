@@ -233,7 +233,14 @@ class silva_manager:
         tuple
             returns a tuple containing the db entry and the number of sequences belonging to that taxon
         '''
-        dat = self.db.tax_lookup('search',taxon_name.upper(),['path','taxid','rank'])
+        dat=[]
+        if isinstance(taxon_name,str):
+            dat = self.db.tax_lookup('search',taxon_name.upper(),['path','taxid','rank'])
+        else:
+            search = []
+            for el in taxon_name:
+                search.append(el.upper())
+            dat = self.db.tax_lookup('search',search,['path','taxid','rank'])
 
         out = []
         while dat:

@@ -1,0 +1,15 @@
+README.md
+setup.py
+MAPT/InSilico_PCR.py
+MAPT/__init__.py
+MAPT/core.py
+MAPT/database/TreeOfLife.py
+MAPT/database/__init__.py
+MAPT/database/ftp.py
+MAPT/database/parser.py
+MAPT/database/silva.py
+MAPT/database/sql_core.py
+MAPT_SEpapoulis.egg-info/PKG-INFO
+MAPT_SEpapoulis.egg-info/SOURCES.txt
+MAPT_SEpapoulis.egg-info/dependency_links.txt
+MAPT_SEpapoulis.egg-info/top_level.txt

@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="example-pkg-YOUR-USERNAME-HERE", # Replace with your own username
+    name="MAPT-SEpapoulis", # Replace with your own username
     version="0.9.0",
     author="Spiridon Evangelos Papoulis",
     author_email="spapouli@vols.utk.edu",

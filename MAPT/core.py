@@ -325,7 +325,20 @@ class PNA_Designer:
         print("Results have been written to {}".format(result_file))
 
     def _iter_silvatax(self,parent_taxpath):
-        accessions = self.silva.get_accessions(parent_taxpath)
+        '''Iterate though sliva sequence data
+        Parameters
+        ----------
+        parent_taxpath : str or list of str
+            list of silva paths to collect for iteration
+        '''
+        get = []
+        if isinstance(parent_taxpath,str):
+            get.append(parent_taxpath)
+        else:
+            get = list(parent_taxpath)
+        accessions= []
+        for el in get:
+            accessions.extend(self.silva.get_accessions(el))
         dat = self.silva.get_seqs(accessions)
         for row in dat:
             yield tuple(row)
