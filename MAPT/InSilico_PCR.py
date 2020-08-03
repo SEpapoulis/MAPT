@@ -70,10 +70,16 @@ def sim_amplify(Forward_primer,Reverse_primer,seq):
     Reverse_primer_RC = reverse_complement(Reverse_primer)
     start=search_primer(seq,Forward_primer,'F')
     end=search_primer(seq,Reverse_primer_RC,'R')
+    if start and end:
+        if end<start:
+            end=search_primer(seq[start:],Reverse_primer_RC,'R')+start
     #retry with reverse complement
     if start == None or end == None:
         start=search_primer(reverse_complement(seq),Forward_primer,'F')
         end=search_primer(reverse_complement(seq),Reverse_primer_RC,'R')
+        if start and end:
+            if end<start:
+                end=search_primer(reverse_complement(seq)[start:],Reverse_primer_RC,'R')+start
     if start == None or end == None:
         raise PrimerError("Could not find forward or reverse primer in sequence")
     return(seq[start:end])
