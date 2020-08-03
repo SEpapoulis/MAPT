@@ -1,61 +1,22 @@
-#ftp://ftp.ncbi.nlm.nih.gov/blast/db/16SMicrobioal.tar.gz
-
-#https://www.arb-silva.de/fileadmin/silva_databases/current/Exports/SILVA_132_SSURef_Nr99_tax_silva_trunc.fasta.gz
-
-'''
-The Parc datasets comprise the entire SILVA databases for the respective gene, 
-whereas the Ref datasets represent a subset of the Parc comprising only 
-high-quality nearly full-length sequences.
-
-
-tax_slv_[ls]su_VERSION.txt
-These files contain taxonomic rank designations for all taxonomic paths
-used in the SILVA taxonomies. Additionally, a unique numeric identifier is 
-assigned to each taxon (path). These identifiers will be mostly stable in 
-upcoming SILVA releases
-
-columns: path, taxid, rank, remark, release
-
-taxmap_TAXNAME_[ls]su_VERSION.txt
-----------------------------
-mapping of each entry in the SILVA database to a taxonomic path. Different
-rRNA regions of the same INSDC entry (genome) may be assigned to multiple
-paths (contaminations or micro diversity among the rRNA sequences).
-
-columns: pac, start, stop ,path ,name, taxid
-'''
-
-
 from .sql_core import sqldb
-from .parser import gzip_fasta,gzip_table
+from .parser import gzip_fasta,gzip_table,compress_gaps,gzip_fasta_batch
 from .TreeOfLife import load_ToL
 from . import ftp
 import os
 import gzip
 
-class Error(Exception):
-    """Base class for exceptions in this module."""
-    pass
+from multiprocessing import Pool
 
-class InputError(Error):
-    """Exception raised for errors in the input.
 
-    Attributes:
-        expression -- input expression in which the error occurred
-        message -- explanation of the error
 
-    def __init__(self, expression, message):
-        self.expression = expression
-        self.message = message    
-    """
-    pass
-
-#TODO
-#add the ability to fetch different versions
-#API for DNA to block and lookup funcitons for DNA    
-#Put the path building into its own module, it makes the core too messy
-#Kmer analysis- might want to try and do a cython implimitation to get it fast
-#add except EOFError to downloads to retry failed downloads
+def compression_worker(element):
+    header,sequence=element
+    dat = header[1:].split(' ') #remove '>' and split by ' '
+    accession,encoding=compress_gaps(dat[0],sequence)
+    entry=[accession]
+    entry.append(sequence.replace('U','T').replace('.','').replace('-',''))
+    entry.append(encoding)
+    return(entry)
 
 class silva_manager:
     '''
@@ -80,305 +41,152 @@ class silva_manager:
     
     '''
 
-    def __init__(self,location=str(),dataset='ref', subunit='small',release=int()):
+    def __init__(self,path=str(),dataset='nr', subunit='small',release=int()):
 
-        #Establishing the path for database files
-        if location:
-            self.location=location
-        else:
-            self.location = os.path.join(os.path.expanduser('~'),'.MAPT')
-            if not os.path.exists(self.location):
-                os.makedirs(self.location)
-        
-        #Currently, we fetch the version number of the current release
-        #TODO: add the ability to fetch different versions
-
-        #Generating the filenames for the database
-        self._meta_dat = {}
-        self._load_meta(release=release)
-        self.__generate_filenames(dataset,subunit)
-        if os.path.exists(self.db_file):
-            self.db = silva_db(self.db_file,self.tree_file)
-        else:
-            self.__build_protocol()
-            
-
-    def __build_protocol(self):
-        if self._meta_dat['current'] == 'True':
-            host = 'ftp://ftp.arb-silva.de/current/Exports/'
-        else:
-            host = 'ftp://ftp.arb-silva.de/release_{}/Exports/'.format(self._meta_dat['release'])
-        host_tax = host+'taxonomy/'
-        if not os.path.exists(self.fasta_file):
-            self._fetch_file(('fasta',host+os.path.basename(self.fasta_file)))
-        if not os.path.exists(self.taxmap_file):
-            self._fetch_file(('taxmap',host_tax+os.path.basename(self.taxmap_file)),False)
-        if not os.path.exists(self.tax_file):
-            self._fetch_file(('tax',host_tax+os.path.basename(self.tax_file)),False)
-        if not os.path.exists(self.tree_file):
-            self._fetch_file(('tree',host_tax+os.path.basename(self.tree_file)),False)
-
-        self.db = silva_db(self.db_file,self.tree_file,self.fasta_file,self.taxmap_file,self.tax_file)
-
-        #cleanup
-        
-        os.remove(self.fasta_file)
-        os.remove(self.taxmap_file)
-        os.remove(self.tax_file)
-        #os.remove(self.embl_file)
-
-    def __generate_filenames(self,dataset,subunit):
-        ''' This function is not compatible with version 132, 132 did not have tax or tree
-        files as gz files. for compatibility, please update
-        '''
-        # * is wildcard for silva release number
-        if subunit not in ('small','large'):
-            raise ValueError("Invalid subunit, must be either small (16S,18S), or large (23S,28S)")
-        elif subunit == 'large' and dataset == 'nr':
-            raise ValueError("There is not a silva non-redundant dataset for the large subunit,\nplease specify ref or parc")
-        if dataset == 'ref': 
-            fasta_file = 'SILVA_*_SSURef_tax_silva.fasta.gz'
-            taxmap_file = 'taxmap_slv_ssu_ref_*.txt.gz'
-            tax_file = 'tax_slv_ssu_*.txt.gz'       
-            tree_file = 'tax_slv_ssu_*.tre.gz'
-        elif dataset == 'nr':
-            fasta_file = 'SILVA_*_SSURef_Nr99_tax_silva.fasta.gz'
-            taxmap_file = 'taxmap_slv_ssu_ref_nr_*.txt.gz'
-            tax_file = 'tax_slv_ssu_*.txt.gz'
-            tree_file = 'tax_slv_ssu_*.tre.gz'
-        elif dataset == 'parc':
-            fasta_file = 'SILVA_*_SSUParc_tax_silva.fasta.gz'
-            taxmap_file = 'taxmap_slv_ssu_parc_*.txt.gz'
-            tax_file = 'tax_slv_ssu_*.txt.gz'
-            tree_file = 'tax_slv_ssu_*.tre.gz'
-        else:
-            raise ValueError("Invalid dataset, choose one of the following: ref, nr, parc")             
-        dbsu="ssu"
-        if subunit == 'large':
-            fasta_file=fasta_file.replace('SSU','LSU')
-            taxmap_file=taxmap_file.replace('ssu','lsu')
-            tax_file=tax_file.replace('ssu','lsu')
-            tree_file=tree_file.replace('ssu','lsu')
-            dbsu="lsu"
-
-        ##self.version_file= os.path.join(self.location,'version')
-        r= self._meta_dat['release']
-        self.db_file = os.path.join(self.location,'silva{}_{}_{}.db'.format(r,dataset,dbsu))
-        self.fasta_file=os.path.join(self.location,fasta_file.replace('*',r))
-        self.taxmap_file=os.path.join(self.location,taxmap_file.replace('*',r))
-        self.tax_file=os.path.join(self.location,tax_file.replace('*',r))
-        self.tree_file=os.path.join(self.location,tree_file.replace('*',r))
-
-        #posthoc changes for 132 compatibility
-        if r == '132':
-            self.tree_file = self.tree_file.replace('.gz','')
-            self.tax_file = self.tax_file.replace('.gz','')
-
-    def _find_release(self):
-        #finding the current release  
-        file_list = ftp.list_dir('ftp.arb-silva.de/current/Exports/')
-        for f in file_list:
-            if '_SSURef_tax_silva.fasta.gz' in f:
-                release = f.split('_')[1]
-                return(release)
-        raise FileNotFoundError('Coult not find release version in ftp.arb-silva.de/current/Exports/')
-
-    def _fetch_file(self,target_file,print_progress=True):
-        DE = ftp.Download_Engine([target_file],destination = self.location)
-        DE.Download(print_progress)
-
-    def _write_meta(self,metafile):
-        with open(metafile,'w') as f:
-            for field in self._meta_dat:
-                f.write(','.join([str(field),str(self._meta_dat[field])])+'\n')
-
-    def _load_meta(self,release):
-        current = None
-        if release == 0:
-            current = self._find_release()
-            release=current
-        meta_file = os.path.join(self.location,'metadat_{}.csv'.format(release))
-        if os.path.exists(meta_file):
-            with open(meta_file,'r') as f:
-                for line in f:
-                    field,dat = line.strip().split(',')
-                    self._meta_dat[field]=dat
-        else:
-            if not current:
-                current = self._find_release()
-            if release == current:# ==0 for default
-                self._meta_dat['release']=current
-                self._meta_dat['current']='True'
-            else:
-                self._meta_dat['release']=release
-                self._meta_dat['current']='False'
-
-            self._write_meta(meta_file)
-
-    def find_taxpath(self,taxon_name,print_results=True):
-        '''Search for taxonomic unit in Silva database
-
-        Finds information on the given taxonomic name provided. Spelling must be exact to taxonomic name
-        to find results.
-
-        Parameters
-        ----------
-        taxon_name: str
-            name of taxon to be searched. Case insensitive
-        print_results: bool
-            All entries found will be printed with additional metadata. Default True.
-
-        Returns
-        -------
-        tuple
-            returns a tuple containing the db entry and the number of sequences belonging to that taxon
-        '''
-        dat=[]
-        if isinstance(taxon_name,str):
-            dat = self.db.tax_lookup('search',taxon_name.upper(),['path','taxid','rank'])
-        else:
-            search = []
-            for el in taxon_name:
-                search.append(el.upper())
-            dat = self.db.tax_lookup('search',search,['path','taxid','rank'])
-
-        out = []
-        while dat:
-            entry = dat.pop()
-            out.append((entry,len(self.get_accessions(entry['path']))))
-        return(out)
-            
-
-    def find_organism(self,name,print_results=True):
-        '''Search for an organism in the Silva database
-
-        You can directly search for a organism by the name. Be aware that only eact matches to the organism name will be shown.
-
-        Parameters
-        ----------
-        name: str
-            name of the organism. Case sensitive. 
-        print_results: bool
-            All entries found will be printed with additional metadata. Default True.
-
-        Returns
-        -------
-        list
-            List of silva entries
-        '''
-        dat = self.db.taxmap_lookup('organism_name',name,['organism_name','accession','path'])
-        return(dat)
-
-    def get_accessions(self,taxpath):
-        '''Retrieve silva accessions under a specific taxonomic unit
-
-        For a given silva taxonomic path, all accessions under this taxon will be retrieved.
-
-        Parameters
-        ----------
-        taxpath: str
-            Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
-            Use find_taxpath() to search the database for a specific taxpath, or use the silva website
-
-        Returns
-        -------
-        accessions
-            List of silva accessions under the given taxonomic path
-        '''
-        taxid = self.db.tax_lookup('path',taxpath,retrieve=['taxid'])
-        if taxid:
-            taxids = self.db.get_descendant_taxids(taxid[0]['taxid'])
-            accessions = self.db.taxmap_lookup('taxid',taxids,retrieve=['accession'])
-            return([el['accession'] for el in accessions])
-        return(list())
+        if path:
+            if path[0] == '~':
+                path = os.path.join(os.path.expanduser(path[0]),path[1:].strip('/'))
     
-    def get_seqs(self,accessions):
-        '''Retrieve sequences from input accessions
+        #set contact ftp for database
+        if not release:
+            sil_ftp = 'ftp.arb-silva.de/current/Exports/'
+        else:
+            sil_ftp = 'ftp://ftp.arb-silva.de/release_{}/Exports/'.format(release)
 
-        For a given list of accessions, retrieve documented sequences
-
-        Parameters
-        ----------
-        accessions: list of accessions
-            list of accessions used for sequence retrieval
-
-        Returns
-        -------
-        Sequence list
-            A list of tuples(accession,sequence)
-        '''
-        dat = self.db.taxmap_lookup('accession',accessions,retrieve=['accession','seq'])
-        return([tuple([el['accession'],el['seq']]) for el in dat])
-
-
-#TODO: 
-#dropping the tables to then add them to another is a very expensive operation,
-#I should just pull them into memeory since they are going to take, at the most 100 meg
-
-class silva_db():
-    def __init__(self,dbfile,tree_file=str(),fasta_file=str(),
-    taxmap_file=str(),tax_file=str()):
-
-        self.db = sqldb(dbfile)
-
-        #Tree of life is a dictionary of nodes
-        #nodes have references to parent and child(ren) nodes
-
-        
-        #NOTE: Our accessions combine the International Nucleotide Sequence Database
-        #      Collaboration (INSDC) primary accession with the start and stop sites.
-        #      Thus, accessions = INSDC primary accession.start.stop      
-        #      
-        
-        #accession is primary key
+        fetch,db_name,tree_name,msa_name=self._parse_remotefiles(sil_ftp,dataset,subunit)
+        self.release,self.subunit,self.dataset = db_name[:-3].split('_')[1:]
+        self.db_file = os.path.join(path,db_name)#contains path
+        self.tree_file = os.path.join(path,tree_name)
+        self.msa_file = os.path.join(path,msa_name)
+        #database outline
         self.taxmap_columns = (('accession', 'TEXT'), 
-                                ('path', 'TEXT'),
-                                ('organism_name', 'TEXT'), 
-                                ('taxid','INTEGER'),
-                                #('ncbi_taxid','INTEGER'), They broke the file >:(
-                                ('seq','TEXT'))
+                        ('path', 'TEXT'),
+                        ('organism_name', 'TEXT'), 
+                        ('taxid','INTEGER'),
+                        #('ncbi_taxid','INTEGER'), They broke the file >:(
+                        ('seq','TEXT'))
 
-        #taxid primary key
         self.tax_columns = (('path', 'TEXT'), ('taxid', 'INTEGER'), 
                                 ('rank','TEXT'), ('remark', 'TEXT'), 
                                 ('release','INTEGER'),
                                 ('search','TEXT'))
 
-        #Adding data
-        if tree_file:
-            self.ToL=load_ToL(tree_file)    
-        if self._setup_required():
-            self._compile_database(fasta_file,taxmap_file,tax_file)
+        self.seq_columns = (('accession', 'TEXT'),('seq','TEXT'))
 
-        #used as a error check for inputs
-        if self.db.table_exists('tax'):
-            self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])     
+        if os.path.exists(self.db_file):
+            self.db = sqldb(self.db_file)
+            self.ToL = load_ToL(self.tree_file)
+        else:
+            self.db = sqldb(self.db_file)
+            self.__build_protocol(fetch)
+            self.ToL = load_ToL(self.tree_file)
 
-    def _setup_required(self):
+
+    def _parse_remotefiles(self,hostftp,dataset,subunit):
+        ''' This function will catagorize files based off of parameters'''
+      
+        #Error checking
+        if dataset not in ['nr','parc','ref']:
+            raise ValueError("Invalid dataset, must be either parc, ref, or nr")
+        if dataset == 'nr':
+            dataset = 'ref_nr99'
+        if subunit == 'small':
+            subunit = 'ssu'
+        elif subunit == 'large':
+            subunit = 'lsu'
+        else:
+            raise ValueError("Invalid subunit, must be either small (16S,18S), or large (23S,28S)")
+
+        filelist = []
+        #get main directory
+        for file in ftp.list_dir(hostftp):
+            filelist.append(file)
+            if 'SILVA_' in file:
+                release=os.path.basename(file).split('_')[1]
+        #get taxonomy
+        for file in ftp.list_dir(hostftp+'taxonomy/'):
+            filelist.append(file)
+        #Identify the files needed
+        search = {
+        'fasta' : 'SILVA_{r}_{s}{d}_tax_silva_trunc.fasta.gz'.format(r=release,s=subunit,d=dataset),
+        'msa' : 'SILVA_{r}_{s}{d}_tax_silva_full_align_trunc.fasta.gz'.format(r=release,s=subunit,d=dataset),
+        'tree' : 'tax_slv_{s}_{r}.tre'.format(r=release,s=subunit,d=dataset), #for compatibility with 132, .gz is dropped and checked later
+        'taxmap' : 'taxmap_slv_{s}_{d}_{r}.txt.gz'.format(r=release,s=subunit,d=dataset.replace('99','')),
+        'tax' : 'tax_slv_{s}_{r}.txt'.format(r=release,s=subunit,d=dataset)}#for compatibility with 132, .gz is dropped and checked later
+        if dataset == 'ref_nr99':
+            dbname='sil_{r}_{s}_nr99.db'.format(r=release,s=subunit)    
+        else:
+            dbname='sil_{r}_{s}_{d}.db'.format(r=release,s=subunit,d=dataset)
+        fetch = {}
+        for file in filelist:
+            for key in search:
+                if key not in fetch:
+                    if search[key].lower() == os.path.basename(file).lower():
+                        fetch[key]=file
+                    if key == 'tree' or key == 'tax':
+                        if search[key].lower()+'.gz' == os.path.basename(file).lower():
+                            fetch[key]=file
+        #adding host for ftp download
+        for key in fetch:
+            fetch[key] = 'ftp://ftp.arb-silva.de/'+fetch[key]
+        return(fetch,dbname,os.path.basename(fetch['tree']),os.path.basename(fetch['msa']))
+
+    def __build_protocol(self,fetch):
+        '''protocol to build the silva database via sqlite3'''
+        path = os.path.split(self.db_file)[0]
+        print('Preparing to Download silva data to {}'.format(path))
+        lcl = {}
+        for el in fetch:
+            lcl_file = os.path.join(path,os.path.basename(fetch[el]))
+            if not os.path.exists(lcl_file):
+                print('Downloading {}'.format(fetch[el]))
+                DE = ftp.Download_Engine([(el,fetch[el])],destination = path)
+                DE.Download(print_progress=True)
+            lcl[el] = lcl_file
+
+        self.__compile(lcl)
         
-        return(not self.db.table_exists('taxmap'))
+        #cleanup
+        os.remove(lcl['fasta'])
+        os.remove(lcl['taxmap'])
+        os.remove(lcl['tax'])
+        
 
-    def _compile_database(self,fasta_file,taxmap_file,tax_file):
-        print("Compiling Silva database, this make take some time")
-        if fasta_file:
-            print('\tAdding sequences to database....', end='\r')
-            self.add_fasta(fasta_file)
-            print('\tAdding sequences to database....  [DONE]')
+    def __compile(self,lcl):
+        print("\nCompiling Silva database, this make take some time")
         print('\tAdding taxonmic metadata to database....', end='\r')
-        if taxmap_file:
-            self.add_taxmap(taxmap_file)
-        if tax_file:
-            self.add_tax(tax_file)
+        if 'taxmap' in lcl:
+            self.__add_taxmap(lcl['taxmap'])
+        if 'tax' in lcl:
+            self.__add_tax(lcl['tax'])
         print('\tAdding taxonmic metadata to database....  [DONE]')
-        print('\tFinishing compilation of a local silva database....', end='\r')
-        self.db.copycol_bypk('taxmap','seqs','accession','seq')
-        self.db.drop_table('seqs')
-        print('\tFinishing compilation of local silva database....  [DONE]')
-        print("Compilation Complete\n")
+        if 'fasta' in lcl:
+            print('\tAdding sequences to database....',end='\r')
+            self.__add_fasta(lcl['fasta'])
+            print('\tAdding sequences to database....  [DONE]')
+        print("Compilation Complete!\n")
 
-    #this funciton will add our fasta data into the sql database
-    #700000 sequences at a time (as to not overflow RAM)
-    def add_fasta(self,fasta_file,write_size=700000,include_path=False):
+    def __add_fasta_compression(self,fasta_file,tbl='seqs'):#write_size=700000,include_path=False):
+        seqs_columns = (('accession', 'TEXT'),
+                            ('seq','TEXT'),
+                            ('gap_compression','TEXT'))
+        #accession is primary key
+        self.db.create_table('seqs',columns=seqs_columns,primary_key=['accession'])
+        seqs_col=[el[0] for el in seqs_columns]
+        #i = 1
+        it=0
+        to_db=[]
+        a_pool = Pool()
+        for dat in gzip_fasta_batch(fasta_file,batchsize=16000):
+            to_db = a_pool.map(compression_worker,dat)
+            self.db.insert_rows('seqs',seqs_col,to_db)
+            it += len(to_db)
+            print("\t{} sequences added".format(it))
+            to_db=[]
+            dat=[]
+
+    def __add_fasta(self,fasta_file,write_size=700000,include_path=False):
+        '''Adds SILVA_[release]_[subunit][dataset]_tax_silva_trunc.fasta.gz.txt to the database'''
         if include_path:
             seqs_columns = (('accession', 'TEXT'),
                                 ('path', 'TEXT'),
@@ -408,24 +216,8 @@ class silva_db():
         if to_db:
             self.db.insert_rows('seqs',seqs_col,to_db)
 
-
-    def add_taxmap(self,taxmap_file):
-        taxmap_columns = (('accession', 'TEXT'), 
-                                ('path', 'TEXT'),
-                                ('organism_name', 'TEXT'), 
-                                ('taxid','INTEGER'))
-        self.db.drop_table('taxmap')
-        self.db.create_table('taxmap',columns=taxmap_columns,
-                            primary_key=['accession'])
-        taxmap_cols=[el[0] for el in taxmap_columns]
-        to_db=[]
-        for line in gzip_table(taxmap_file):
-            accession = '.'.join(line[0:3])
-            to_db.append([accession]+line[3:])
-        self.db.insert_rows('taxmap',taxmap_cols,to_db)
-        
-    
-    def add_tax(self,tax_file):
+    def __add_tax(self,tax_file):
+        '''Adds tax_slv_[subunit]_[release].txt to the database'''
         self.db.drop_table('tax')
         self.db.create_table('tax',columns=self.tax_columns,primary_key=['path','taxid'])
         tax_cols=[el[0] for el in self.tax_columns]
@@ -451,75 +243,57 @@ class silva_db():
             f.close()
         self.db.insert_rows('tax',tax_cols,to_db)
         #if we add tax, we must construct _ranks
-        self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
-    '''      
-    def add_embl(self,embl_file):
-        embl_columns = (('accession', 'TEXT'), 
+        #self._ranks = set([el[0] for el in self.db.get_columns('tax','rank')])
+
+    def __add_taxmap(self,taxmap_file):
+        '''Adds taxmap_slv_[subunit]_[dataset]_[release].txt.gz.txt to the database'''
+        taxmap_columns = (('accession', 'TEXT'), 
                                 ('path', 'TEXT'),
                                 ('organism_name', 'TEXT'), 
-                                ('ncbi_taxid','INTEGER'))
-        self.db.drop_table('embl')
-        self.db.create_table('embl',columns=embl_columns,
+                                ('taxid','INTEGER'))
+        self.db.drop_table('taxmap')
+        self.db.create_table('taxmap',columns=taxmap_columns,
                             primary_key=['accession'])
-        embl_cols=[el[0] for el in embl_columns]
+        taxmap_cols=[el[0] for el in taxmap_columns]
         to_db=[]
-        for line in gzip_table(embl_file):
+        for line in gzip_table(taxmap_file):
             accession = '.'.join(line[0:3])
             to_db.append([accession]+line[3:])
-        self.db.insert_rows('embl',embl_cols,to_db)
-    '''
-    '''
-    def get_organism_byname(self,name):
-        name=name.lower()
-        dat=self.db.get_columns(table_name='taxmap',
-                                columns=['organism_name','accession','path','taxid'])
-        found = []
-        for row in dat:
-            try:
-                if name in row['organism_name'].lower():
-                    found.append(row)
-            except IndexError:
-                print(row)
-        if found:
-            print('Matches:')
-            for row in found:
-                print('\n\tName:       {}\n\tAccession:  {}\n\tTaxon:      {}\n\ttaxid:      {}'
-                    .format(row['organism_name'],row['accession'],row['path'],row['taxid']))
-        else:
-            print('Sorry, no matches\n')
-        return(found)
-    '''
-    def find_taxon(self,name):
-        name=name.upper()
-        dat=self.db.get_rows_bycolvalue(table_name='tax',valuecolumn='search',
-                                        values=name,columns=['path','taxid','rank','search'])
-        return(dat)        
+        self.db.insert_rows('taxmap',taxmap_cols,to_db)
+        self.accession_count = len(to_db)
 
-    #this will use the tree of life to get all descendant taxids
     def _recursive_descendant_taxids(self,taxid):
+        '''For each childnode, call child nodes'''
         taxids=[]
         node = self.ToL[taxid]
         for childnode in node.children:
             if childnode.children:
-                taxids.extend(self.get_descendant_taxids(childnode.taxid))
+                taxids.extend(self._get_descendant_taxids(childnode.taxid))
             else:
                 taxids.append(childnode.taxid)
         return(taxids)
 
-    def get_descendant_taxids(self,taxid):
+    def _get_descendant_taxids(self,taxid):
+        '''inits recursive call for descendants in ToL'''
         taxids = self._recursive_descendant_taxids(taxid)
         taxids.append(taxid)
         return(taxids)
 
-    def tax_lookup(self,valuecolumn,values,retrieve=None):
+    def _find_taxon(self,name):
+        name=name.upper()
+        dat=self.db.get_rows_bycolvalue(table_name='tax',valuecolumn='search',
+                                        values=name,columns=['path','taxid','rank','search'])
+        return(dat)
+
+    def _tax_lookup(self,valuecolumn,values,retrieve=None):
         if retrieve==None:
             retrieve = [el[0] for el in self.tax_columns]
 
         dat=self.db.get_rows_bycolvalue(table_name='tax',valuecolumn=valuecolumn,
                                         values=values,columns=retrieve)
         return(dat)
+    def _taxmap_lookup(self,valuecolumn,values,retrieve=None):
 
-    def taxmap_lookup(self,valuecolumn,values,retrieve=None):
         if retrieve==None:
             retrieve = [el[0] for el in self.taxmap_columns]
 
@@ -527,34 +301,186 @@ class silva_db():
                                         values=values,columns=retrieve)
         return(dat)
 
-    def write_fasta(self,accessions,fasta_file,include_taxid=False,include_path=False,
-                   include_organism_name=False):
-        cols = ['accession','seq']
-        taxmap_metadata=[]
-        if include_organism_name:
-            taxmap_metadata.append('organism_name')
-        if include_path:
-            taxmap_metadata.append('path')
-        if include_taxid:
-            taxmap_metadata.append('taxid')
-        #if include_NCBItaxid:
-        #    taxmap_metadata.append('ncbi_taxid')
-        cols.extend(taxmap_metadata)
-        dat = self.taxmap_lookup('accessions',accessions)
-        with open(fasta_file,'w') as f:
-            for row in dat:
-                header=['>'+row['accession']]
-                for metadata in taxmap_metadata:
-                    header.append("[{}:{}]".format(str(metadata),str(row[metadata])))
-                f.write(' '.join(header))
-                seq = row['seq']
-                for i in range(0,len(seq),100):
-                    if i+100 <= len(dat):
-                        f.write(dat[i:i+100]+'\n')
-                    else:
-                        f.write(dat[i:len(dat)]+'\n')
+    def __getitem__(self,key):
+            '''
+            returns a entry of all assoicated metadata
+            '''
+            if isinstance(key,str):
+                keys = [key]
+            else:
+                keys = list(key)
+            dat = self._taxmap_lookup('accession',keys,retrieve=['accession','path','organism_name'])
+            if len(dat) == 1:
+                return(dat[0])
+            return(dat)
+
+    def __repr__(self):
+        rprt = ["Local Silva database",'-'*20]
+        rprt.append("  Path      {}".format(self.db_file))
+        rprt.append("  Release   {}".format(self.release))
+        rprt.append("  Dataset   {}".format(self.dataset))
+        rprt.append("  Subunit   {}".format(self.subunit))
+        return('\n'.join(rprt))
+
+
+    #################Exposed to user################# #REQUIRES REVIEW
+
+    def find_taxpath(self,taxon_name):
+        '''Search for taxonomic unit in Silva database
+
+        Finds information on the given taxonomic name provided. Spelling must be exact to taxonomic name
+        to find results.
+
+        Parameters
+        ----------
+        taxon_name: str
+            name of taxon to be searched. Case insensitive
+
+        Returns
+        -------
+        tuple
+            returns a tuple containing the db entry and the number of sequences belonging to that taxon
+        '''
+        dat=[]
+        if isinstance(taxon_name,str):
+            dat = self._tax_lookup('search',taxon_name.upper(),['path','taxid','rank'])
+        else:
+            search = []
+            for el in taxon_name:
+                search.append(el.upper())
+            dat = self._tax_lookup('search',search,['path','taxid','rank'])
+
+        out = []
+        while dat:
+            entry = dat.pop()
+            out.append((entry,len(self.get_accessions(entry['path']))))
+        return(out)
+            
+
+    def find_organism(self,name):
+        '''Search for an organism in the Silva database
+
+        You can directly search for a organism by the name. Be aware that only exact matches to the organism name will be shown.
+
+        Parameters
+        ----------
+        name: str
+            name of the organism. Case sensitive. 
+
+        Returns
+        -------
+        list
+            List of silva entries
+        '''
+        dat = self._taxmap_lookup('organism_name',name,['organism_name','accession','path'])
+        return(dat)
+
+    def get_accessions(self,taxpath):
+        '''Retrieve silva accessions under a specific taxonomic unit
+
+        For a given silva taxonomic path, all accessions under this taxon will be retrieved.
+
+        Parameters
+        ----------
+        taxpath: str
+            Desired Silva taxpath. For example, Fungi would be: "Eukaryota;Opisthokonta;Nucletmycea;Fungi;".
+            Use find_taxpath() to search the database for a specific taxpath, or use the silva website
+
+        Returns
+        -------
+        accessions
+            List of silva accessions under the given taxonomic path
+        '''
+        taxid = self._tax_lookup('path',taxpath,retrieve=['taxid'])
+        if taxid:
+            taxids = self._get_descendant_taxids(taxid[0]['taxid'])
+            accessions = self._taxmap_lookup('taxid',taxids,retrieve=['accession'])
+            return([el['accession'] for el in accessions])
+        return(list())
+    
+    def get_seqs(self,accessions):
+        '''Retrieve sequences from input accessions
+
+        For a given list of accessions, retrieve documented sequences
+
+        Parameters
+        ----------
+        accessions: list of accessions
+            list of accessions used for sequence retrieval
+
+        Returns
+        -------
+        Sequence list
+            A list of tuples(accession,sequence)
+        '''
+        dat = self.db.get_rows_bycolvalue(table_name='seqs',valuecolumn='accession',
+                                            values=accessions,columns=['accession','seq'])
+        return([tuple([el['accession'],el['seq']]) for el in dat])
+
+    def get_aligned(self,accessions):
+        '''Retrieve sequences from input accessions
+
+        For a given list of accessions, retrieve documented sequences
+
+        Parameters
+        ----------
+        accessions: list of accessions
+            list of accessions used for sequence retrieval
+
+        Returns
+        -------
+        Sequence list
+            A list of tuples(accession,sequence)
+        '''
+        if isinstance(str,accessions):
+            a = set([accessions])
+        else:
+            a = set(accessions)
+        aligned_seqs = []
+        for header,sequence in gzip_fasta(self.msa_file):
+            dat = header[1:].split(' ') #remove '>' and split by ' '
+            if dat[0] in a:
+                entry=[dat[0]]
+                #if include_path:
+                #    path = ' '.join(dat[1:]) #rebuild path
+                #    entry.append(path)
+                entry.append(sequence.replace('U','T'))
+                aligned_seqs.append(entry)
+
+    def write_aligned(self,accessions,file):
+        '''Retrieve sequences from input accessions
+
+        For a given list of accessions, retrieve documented sequences
+
+        Parameters
+        ----------
+        accessions: list of accessions
+            list of accessions used for sequence retrieval
+        file: str
+            file path to save sequences
+
+        '''
+        if isinstance(accessions,str):
+            a = set([accessions])
+        else:
+            a = set(accessions)
+        total = self.db.total_rows('seqs')
         
-
-        
-
-
+        j=0
+        j_=0
+        print("Decompressing and retrieving {} sequences from {} total sequences".format(len(accessions),total))
+        with open(file,'w') as f:
+            for header,sequence in gzip_fasta(self.msa_file):
+                j+=1
+                accession=header[1:].split(' ')[0]
+                print("  Searching {0:.2f}%\t".format(j/total*100),end='\r')
+                if accession in a:
+                    j_+=1
+                    f.write(''.join(['>',accession,'\n']))
+                    sequence = sequence.replace('U','T')
+                    for i in range(0,len(sequence),100):
+                        if i+100 <= len(sequence):
+                            f.write(sequence[i:i+100]+'\n')
+                        else:
+                            f.write(sequence[i:len(sequence)]+'\n')
+        print("{} sequences writen to {}".format(j_,file))
