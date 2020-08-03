@@ -44,7 +44,76 @@ def gzip_table(filename,skip_first_row=True):
             dat = dat.split('\t')
             yield (dat)
 
-def gzip_fasta(fasta_file):
+def compress_gaps(accession,seq):
+    ''' this function produces an encoding of seqs without gaps'''
+    encoding = False
+    current_encoding = [str(),str(),str()]
+    compression = []
+    i=0 #used to count all non - or .
+    e=int() #used to count sequence of - or .
+    for char in seq:
+        #only count when not . or -
+        if encoding:
+            if not (char == '.' or char == '-'):
+                current_encoding[2] = str(e) #insert e of char
+                compression.append(','.join(current_encoding))
+                encoding=False
+                current_encoding = [str(),str(),str()]
+                i+=1
+            else:
+                e+=1
+        else:
+            if char == '.' or char == '-':
+                encoding = True
+                e = 1 #number of char to encode
+                current_encoding[0] = char #what character
+                current_encoding[1] = str(i) #start position relative to compression
+            else: 
+                i+=1
+    if current_encoding[0]:
+        current_encoding[2] = str(e) #end position
+        compression.append(','.join(current_encoding))
+    return(accession,';'.join(compression))
+
+def inflate(encoding):
+    char,pos,numchar = encoding.split(',')
+    return(char*int(numchar),int(pos))
+
+def inflate_gaps(accession,seq,compression):
+    gapseq=[]
+    last_encoding_position=int()
+    for encoding in compression.split(';'):
+        gaps,pos = inflate(encoding)
+        if pos: #add nt from gapless sequence
+            #print([last_encoding_position,pos])
+            gapseq.append(seq[last_encoding_position:pos])
+        gapseq.append(gaps)
+        last_encoding_position = pos
+    return(accession,''.join(gapseq))
+
+def read_fasta(fasta_file):
+    accession_seq = {}                                                                                                        
+    with open(fasta_file, 'r') as f:
+        seq=""
+        header=""
+        for line in f:
+            if line[0] == '>':
+                if header!="":
+                    accession = header[1:].split(' ')[0]
+                    accession_seq[accession]=seq
+                header=line.strip()
+                seq=""
+            else:
+                temp=line.strip()#removing end of line
+                temp=temp.replace(" ","")#removing any possible spaces
+                seq+=temp
+        #for the last sequence
+        if header:
+            accession = header[1:].split(' ')[0]
+            accession_seq[accession]=seq
+    return(accession_seq)
+
+def gzip_fasta(fasta_file):                                                                                                        
     with gzip.open(fasta_file, 'r') as f:
         seq=""
         header=""
@@ -63,6 +132,28 @@ def gzip_fasta(fasta_file):
         if header:
             yield(header,seq)
 
+def gzip_fasta_batch(fasta_file,batchsize=5000):                                                                                                        
+    with gzip.open(fasta_file, 'r') as f:
+        seq=""
+        header=""
+        dat=[]
+        seq = []
+        for line in f:
+            line = str(line,'utf-8')
+            if line[0] == '>':
+                if header!="":
+                    dat.append((header,''.join(seq)))
+                header=line.strip()
+                seq=[]
+            else:
+                temp=line.strip()#removing end of line
+                temp=temp.replace(" ","")#removing any possible spaces
+                seq.append(temp)
+            if len(dat) == batchsize:
+                yield dat
+                dat = []
+        #for the last sequence
+        yield dat
 
 #returns a list of tuples, where each tuple is (decendants,taxid)
 def split_newick(s):
