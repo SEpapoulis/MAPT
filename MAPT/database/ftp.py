@@ -157,7 +157,6 @@ class Download_Engine:
         #open our write location
         f = open(os.path.join(self.destination,lcl_file),'wb')
         if print_progress:
-            print(file)
             self.dl_progress=ProgressBar(ftp.size(file))
             def callback(data):
                 f.write(data)
