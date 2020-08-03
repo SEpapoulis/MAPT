@@ -2,6 +2,7 @@ import os
 from . import InSilico_PCR
 from .database.silva import silva_manager
 from collections import defaultdict
+from .database.parser import read_fasta
 
 #Microbiome Amplification Preference Tool (MAPT)
     
@@ -233,9 +234,9 @@ class PNA_Designer:
         Silva Database used to fetch sequences. Available options are **parc** (all sequences),
         **ref** (high quality sequences), or **nr** (non-redundant, clustered 
         99% identity criterion). Defaults to **nr**
-    subunit: str, optional
+    silva_subunit: str, optional
         Specify **large** or **small** ribosomal subunit in silva database. Defaults to **small**
-    database_dir: str, optional
+    silva_dir: str, optional
         Local directory of silva database if "target_silva_accession" or 
         "sequence_silva_taxid" is specified. Default is "~/.MAPT"
         
@@ -250,7 +251,7 @@ class PNA_Designer:
     def __init__(self,result_file=str(),target_silva_accession=str(),target_fastafile=str(),
     sequence_file=str(),sequence_silva_path=int(),primer_F=str(),primer_R=str(),kmer_range=(9,14),
     silva_release=int(),
-    silva_dataset='ref',subunit='small',database_dir=str()):
+    silva_dataset='ref',silva_subunit='small',silva_dir='~/.MAPT'):
 
         self._target = () #tuple of (accession,seq)
         self._primer_F = primer_F
@@ -272,7 +273,7 @@ class PNA_Designer:
         
         #initialize the silva database
         if target_silva_accession or sequence_silva_path:
-            self.silva = silva_manager(location=database_dir,dataset=silva_dataset, subunit=subunit,release=silva_release)
+            self.silva = silva_manager(path=silva_dir,dataset=silva_dataset, subunit=silva_subunit,release=silva_release)
         
         
         #getting the target sequence
@@ -297,14 +298,14 @@ class PNA_Designer:
         
         #Lets starting adding sequences to make our PNA
         if sequence_silva_path:
-            sequence_iterator = self._iter_silvatax(sequence_silva_path)
+            self.sequence_iterator = self._iter_silvatax(sequence_silva_path)
         else:
-            sequence_iterator = self._iter_fasta(sequence_file)
+            self.sequence_iterator = self._iter_fasta(sequence_file)
         
         #if amplifying targets 
         if self._primer_F and self._primer_R:
             print("Amplifying and Collecting sequence K-mers")
-            for accession,sequence in sequence_iterator:
+            for accession,sequence in self.sequence_iterator:
                 try:
                     seq = InSilico_PCR.sim_amplify(self._primer_F,self._primer_R,sequence)
                     self.pna.add_sequence(seq)
@@ -314,7 +315,7 @@ class PNA_Designer:
                 print('\tWARNING: {} sequences failed to amplify, please see attribute "failed_amplification"'.format(str(len(self.failed_amplification))))
         else:
             print("Collecting sequence K-mers")
-            for accession,sequence in sequence_iterator:
+            for accession,sequence in self.sequence_iterator:
                 self.pna.add_sequence(sequence)
 
         #mapping kmers to target
@@ -381,3 +382,48 @@ class PNA_Designer:
         results = self.pna.get_results()
         results['PNA mapping']=dat
         return(results)
+
+def report_collateral(PNA,sequence_file=str(),sequence_silva_path=str(),antiparallel_only=False,
+                    primer_F=str(),primer_R = str(),kmer_range=(9,13),
+                    silva_dir = '~/.MAPT',silva_release=int(),silva_dataset='ref',silva_subunit='small'):
+    '''
+    Align a PNA to a sequences
+
+    report_collateral will use the k_mapper class to generate k-mer alignments between the PNA and
+    other sequences. PNA oligomers can bind to DNA in either orientation, thus, the reverse of 
+    the PNA is also searched for alignments
+
+    Parameters
+    ----------
+    PNA : str
+        PNA sequence
+    antiparallel_only : bool, optional
+        Specifies if only the antiparallel orientation should be concidered in alignment. Defaults to False
+
+    '''
+    if not _XOR(sequence_file,sequence_silva_path):
+            raise InputError("Please provide either a fasta file or a silva taxonomic ID")
+    if sequence_file:
+        accession_seq = read_fasta(sequence_file)
+    if sequence_silva_path:
+        sil =silva_manager(path=silva_dir,dataset=silva_dataset, subunit=silva_subunit,release=silva_release)
+        accessions = sil.get_accessions(sequence_silva_path)
+        accession_seq = {el[0]:el[1] for el in sil.get_seqs(accessions)}
+    accession_maxk = {}
+    for accession in accession_seq:
+        if primer_F and primer_R:
+            try:
+                sequence = InSilico_PCR.sim_amplify(primer_F,primer_R,accession_seq[accession])
+            except InSilico_PCR.PrimerError:
+                accession_maxk[accession] = 'N/A'
+        else:
+            sequence = accession_seq[accession]
+        if accession not in accession_maxk:
+            dat = _map_PNA(sequence,PNA,krange=kmer_range,antiparallel_only=antiparallel_only)
+            try:
+                accession_maxk[accession] = max(dat)
+            except ValueError:
+                print(dat)
+                print(accession)
+                print(sequence)
+    return(accession_maxk)
