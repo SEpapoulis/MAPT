@@ -41,12 +41,13 @@ class silva_manager:
     
     '''
 
-    def __init__(self,path=str(),dataset='nr', subunit='small',release=int()):
+    def __init__(self,path='',dataset='nr', subunit='small',release=int()):
 
         if path:
             if path[0] == '~':
                 path = os.path.join(os.path.expanduser(path[0]),path[1:].strip('/'))
-    
+        else:
+            path = os.path.join(os.path.expanduser('~'),'.MAPT')
         #set contact ftp for database
         if not release:
             sil_ftp = 'ftp.arb-silva.de/current/Exports/'
@@ -134,6 +135,7 @@ class silva_manager:
     def __build_protocol(self,fetch):
         '''protocol to build the silva database via sqlite3'''
         path = os.path.split(self.db_file)[0]
+
         print('Preparing to Download silva data to {}'.format(path))
         lcl = {}
         for el in fetch:
