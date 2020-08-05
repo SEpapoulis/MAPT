@@ -1,7 +1,7 @@
 ﻿.. currentmodule:: MAPT
 
 ****************************************
-recapitulating the pPNA
+Recapitulating the pPNA
 ****************************************
 
 General explanation of the procedure
