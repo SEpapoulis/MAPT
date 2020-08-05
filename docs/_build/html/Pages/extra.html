@@ -7,11 +7,11 @@
     <title>Managing Sequence Data from Silva &#8212; pna_designer  documentation</title>
     <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="prev" title="recapitulating the pPNA" href="pPNA.html" /> 
@@ -38,7 +38,7 @@
 <h1>Managing Sequence Data from Silva<a class="headerlink" href="#managing-sequence-data-from-silva" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="MAPT.silva_manager">
-<em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">silva_manager</code><span class="sig-paren">(</span><em class="sig-param">location=''</em>, <em class="sig-param">dataset='ref'</em>, <em class="sig-param">subunit='small'</em>, <em class="sig-param">release=0</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">silva_manager</code><span class="sig-paren">(</span><em class="sig-param">path=''</em>, <em class="sig-param">dataset='nr'</em>, <em class="sig-param">subunit='small'</em>, <em class="sig-param">release=0</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager" title="Permalink to this definition">¶</a></dt>
 <dd><p>Manager class used to search and retrieve Silva sequences</p>
 <p>The Silva manager class is used by the PNA_Designer to retrieve sequences
 under a specific taxonomic unit, however, users can access the silva_manager API
@@ -57,15 +57,12 @@ for their own uses.</p>
 </dl>
 <dl class="method">
 <dt id="MAPT.silva_manager.find_organism">
-<code class="sig-name descname">find_organism</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">print_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.find_organism" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">find_organism</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.find_organism" title="Permalink to this definition">¶</a></dt>
 <dd><p>Search for an organism in the Silva database</p>
-<p>You can directly search for a organism by the name. Be aware that only eact matches to the organism name will be shown.</p>
+<p>You can directly search for a organism by the name. Be aware that only exact matches to the organism name will be shown.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<em>str</em>) – name of the organism. Case sensitive.</p></li>
-<li><p><strong>print_results</strong> (<em>bool</em>) – All entries found will be printed with additional metadata. Default True.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – name of the organism. Case sensitive.</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><em>list</em> – List of silva entries</p>
@@ -75,16 +72,13 @@ for their own uses.</p>
 
 <dl class="method">
 <dt id="MAPT.silva_manager.find_taxpath">
-<code class="sig-name descname">find_taxpath</code><span class="sig-paren">(</span><em class="sig-param">taxon_name</em>, <em class="sig-param">print_results=True</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.find_taxpath" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">find_taxpath</code><span class="sig-paren">(</span><em class="sig-param">taxon_name</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.find_taxpath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Search for taxonomic unit in Silva database</p>
 <p>Finds information on the given taxonomic name provided. Spelling must be exact to taxonomic name
 to find results.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>taxon_name</strong> (<em>str</em>) – name of taxon to be searched. Case insensitive</p></li>
-<li><p><strong>print_results</strong> (<em>bool</em>) – All entries found will be printed with additional metadata. Default True.</p></li>
-</ul>
+<dd class="field-odd"><p><strong>taxon_name</strong> (<em>str</em>) – name of taxon to be searched. Case insensitive</p>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><em>tuple</em> – returns a tuple containing the db entry and the number of sequences belonging to that taxon</p>
@@ -109,6 +103,21 @@ Use find_taxpath() to search the database for a specific taxpath, or use the sil
 </dd></dl>
 
 <dl class="method">
+<dt id="MAPT.silva_manager.get_aligned">
+<code class="sig-name descname">get_aligned</code><span class="sig-paren">(</span><em class="sig-param">accessions</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.get_aligned" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve sequences from input accessions</p>
+<p>For a given list of accessions, retrieve documented sequences</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>accessions</strong> (<em>list of accessions</em>) – list of accessions used for sequence retrieval</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>Sequence list</em> – A list of tuples(accession,sequence)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
 <dt id="MAPT.silva_manager.get_seqs">
 <code class="sig-name descname">get_seqs</code><span class="sig-paren">(</span><em class="sig-param">accessions</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.get_seqs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieve sequences from input accessions</p>
@@ -119,6 +128,21 @@ Use find_taxpath() to search the database for a specific taxpath, or use the sil
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><em>Sequence list</em> – A list of tuples(accession,sequence)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="MAPT.silva_manager.write_aligned">
+<code class="sig-name descname">write_aligned</code><span class="sig-paren">(</span><em class="sig-param">accessions</em>, <em class="sig-param">file</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.silva_manager.write_aligned" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve sequences from input accessions</p>
+<p>For a given list of accessions, retrieve documented sequences</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>accessions</strong> (<em>list of accessions</em>) – list of accessions used for sequence retrieval</p></li>
+<li><p><strong>file</strong> (<em>str</em>) – file path to save sequences</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -270,7 +294,7 @@ axis.title=element_text(size=axis_text_size))+</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -289,7 +313,7 @@ axis.title=element_text(size=axis_text_size))+</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Spiridon Evangelos Papoulis.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.0.
     </div>
   </body>
 </html>

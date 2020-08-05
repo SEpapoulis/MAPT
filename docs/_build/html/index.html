@@ -7,11 +7,11 @@
     <title>Microbiome Amplification Preference Tool &#8212; pna_designer  documentation</title>
     <link rel="stylesheet" href="_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Recapitulating the gPNA" href="Pages/gPNA.html" /> 
@@ -43,7 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="Pages/gPNA.html">Recapitulating the gPNA</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Pages/mPNA.html">Recapitulating the mPNA</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Pages/pPNA.html">recapitulating the pPNA</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Pages/pPNA.html">Recapitulating the pPNA</a></li>
 </ul>
 </div>
 </div>
@@ -53,7 +53,7 @@
 your own custom PNA.</p>
 <dl class="class">
 <dt id="MAPT.PNA_Designer">
-<em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">PNA_Designer</code><span class="sig-paren">(</span><em class="sig-param">result_file=''</em>, <em class="sig-param">target_silva_accession=''</em>, <em class="sig-param">target_fastafile=''</em>, <em class="sig-param">sequence_file=''</em>, <em class="sig-param">sequence_silva_path=0</em>, <em class="sig-param">primer_F=''</em>, <em class="sig-param">primer_R=''</em>, <em class="sig-param">kmer_range=(9</em>, <em class="sig-param">14)</em>, <em class="sig-param">silva_release=0</em>, <em class="sig-param">silva_dataset='ref'</em>, <em class="sig-param">subunit='small'</em>, <em class="sig-param">database_dir=''</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.PNA_Designer" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">MAPT.</code><code class="sig-name descname">PNA_Designer</code><span class="sig-paren">(</span><em class="sig-param">result_file=''</em>, <em class="sig-param">target_silva_accession=''</em>, <em class="sig-param">target_fastafile=''</em>, <em class="sig-param">sequence_file=''</em>, <em class="sig-param">sequence_silva_path=0</em>, <em class="sig-param">primer_F=''</em>, <em class="sig-param">primer_R=''</em>, <em class="sig-param">kmer_range=(9</em>, <em class="sig-param">14)</em>, <em class="sig-param">silva_release=0</em>, <em class="sig-param">silva_dataset='ref'</em>, <em class="sig-param">silva_subunit='small'</em>, <em class="sig-param">silva_dir='~/.MAPT'</em><span class="sig-paren">)</span><a class="headerlink" href="#MAPT.PNA_Designer" title="Permalink to this definition">¶</a></dt>
 <dd><p>A tool used to streamline the design of PNA oligos used for blocking
 amplification of specific DNAs during PCR amplification</p>
 <p>PNA_designer is a module that automates key steps in designing a PNA blocker. Unfortunately,
@@ -82,8 +82,8 @@ of the PNA target and sequences for PNA design will be used.</p></li>
 <li><p><strong>silva_dataset</strong> (<em>str, optional</em>) – Silva Database used to fetch sequences. Available options are <strong>parc</strong> (all sequences),
 <strong>ref</strong> (high quality sequences), or <strong>nr</strong> (non-redundant, clustered
 99% identity criterion). Defaults to <strong>nr</strong></p></li>
-<li><p><strong>subunit</strong> (<em>str, optional</em>) – Specify <strong>large</strong> or <strong>small</strong> ribosomal subunit in silva database. Defaults to <strong>small</strong></p></li>
-<li><p><strong>database_dir</strong> (<em>str, optional</em>) – Local directory of silva database if “target_silva_accession” or
+<li><p><strong>silva_subunit</strong> (<em>str, optional</em>) – Specify <strong>large</strong> or <strong>small</strong> ribosomal subunit in silva database. Defaults to <strong>small</strong></p></li>
+<li><p><strong>silva_dir</strong> (<em>str, optional</em>) – Local directory of silva database if “target_silva_accession” or
 “sequence_silva_taxid” is specified. Default is “~/.MAPT”</p></li>
 </ul>
 </dd>
@@ -173,7 +173,7 @@ have made the k_mapper datatype available for users.</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -192,7 +192,7 @@ have made the k_mapper datatype available for users.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Spiridon Evangelos Papoulis.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.0.
     </div>
   </body>
 </html>

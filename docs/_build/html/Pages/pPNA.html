@@ -4,14 +4,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta charset="utf-8" />
-    <title>recapitulating the pPNA &#8212; pna_designer  documentation</title>
+    <title>Recapitulating the pPNA &#8212; pna_designer  documentation</title>
     <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Managing Sequence Data from Silva" href="extra.html" />
@@ -39,7 +39,7 @@
           <div class="body" role="main">
             
   <div class="section" id="recapitulating-the-ppna">
-<h1>recapitulating the pPNA<a class="headerlink" href="#recapitulating-the-ppna" title="Permalink to this headline">¶</a></h1>
+<h1>Recapitulating the pPNA<a class="headerlink" href="#recapitulating-the-ppna" title="Permalink to this headline">¶</a></h1>
 <p>General explanation of the procedure
 MAPT, the Microbiome Amplification Preference Tool, is designed to find regions of homology between the host and its microbiome. MAPT has great flexibility, as any FASTA sequence can be used as the target sequence, i.e. the sequence that should be blocked. As you can see below, for the pPNA that sequence is A. thaliana, and is designed to recapitulate the results seen in Lundberg et al., 2013. MAPT users also specify the primers (shown below as the forward and reverse primer as Fprimer and Rprimer. This helps as only organisms that have homology to these primers are amplified in silico. The microbiome sequences come from Greengenes, as this was used to design the pPNA originally (Lundberg et al., 2013). K-mer range is the size that the sequences are fractionated into, such that K-mer range of 9-13 fractionates reads into sizes 9 to 13. By doing so we can identify regions that are ideal for targeting host amplification with oligonucleotides, such as PNAs, that will bind to host DNA and block amplification.</p>
 <div class="section" id="required-information">
@@ -88,7 +88,7 @@ as well. We will allow the PNA to bind in both directions for plotting</p>
 <h2>Mapping a PNA<a class="headerlink" href="#mapping-a-pna" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [9]: </span><span class="n">pPNA</span> <span class="o">=</span> <span class="s2">&quot;GGCTCAACCCTGGACAG&quot;</span>
 
-<span class="gp">In [10]: </span><span class="n">mapping</span> <span class="o">=</span> <span class="n">designer_pPNA</span><span class="o">.</span><span class="n">map_PNA</span><span class="p">(</span><span class="n">pPNA</span><span class="p">,</span><span class="n">antiparallel_only</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+<span class="gp">In [10]: </span><span class="n">mapping</span> <span class="o">=</span> <span class="n">designer_pPNA</span><span class="o">.</span><span class="n">map_PNA</span><span class="p">(</span><span class="n">pPNA</span><span class="p">,</span><span class="n">antiparallel_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="gp">In [11]: </span><span class="kn">import</span> <span class="nn">pandas</span><span class="c1">#pandas is a module for working with dataframe objects in python, highly recommend!</span>
 
@@ -123,7 +123,7 @@ a figure! We will use a custom R script to plot our data.</p>
         <div class="sphinxsidebarwrapper">
   <h3><a href="../index.html">Table of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">recapitulating the pPNA</a><ul>
+<li><a class="reference internal" href="#">Recapitulating the pPNA</a><ul>
 <li><a class="reference internal" href="#required-information">Required Information</a></li>
 <li><a class="reference internal" href="#generating-k-mer-maps">Generating K-mer maps</a></li>
 <li><a class="reference internal" href="#mapping-a-pna">Mapping a PNA</a></li>
@@ -153,7 +153,7 @@ a figure! We will use a custom R script to plot our data.</p>
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
@@ -175,7 +175,7 @@ a figure! We will use a custom R script to plot our data.</p>
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2019, Spiridon Evangelos Papoulis.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.4.0.
     </div>
   </body>
 </html>
