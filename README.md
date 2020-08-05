@@ -14,5 +14,7 @@ Once MAPT has been downloaded, you can easily add it to your sys path
 `sys.path.insert(0, 'local/path/to/MAPT)`
 You can see an example jupyter notebook of this module at /Moccia_PNA/Moccia_PNA.ipynb
 
+MAPT is currently in beta! Please report any issues you run into!
+
 ##Documentation
 Documentation can be found under docs/_build/html/index.html
